@@ -1,0 +1,1059 @@
+﻿create or replace PACKAGE JEBGPI
+  IS
+-- ---------   ------  ------------------------------------------
+   Procedure GetRITasks (
+        in_SiteId IN varchar2,
+        in_FromYear IN varchar2,
+        in_ToYear IN varchar2,
+        in_overDue in varchar2,
+        rsRITasksList OUT SYS_REFCURSOR);
+
+   Procedure GetRITasksAll (
+        in_SiteId IN varchar2,
+        in_FromYear IN varchar2,
+        in_ToYear IN varchar2,
+        rsRITasksList OUT SYS_REFCURSOR);
+
+    Procedure GETMOCNumber (
+         in_MOCNumber IN varchar2,
+         rsMOCList OUT SYS_REFCURSOR)
+         ;
+
+
+PROCEDURE GetDefaultApproverListBUM(
+        in_SiteID IN VARCHAR2,
+        in_BusUnitArea IN varchar2,
+        in_Line IN varchar2,
+        in_Class IN varchar2,
+        in_Cat IN varchar2,
+        in_SubCat IN varchar2,
+        rsBUMList    OUT SYS_REFCURSOR);
+
+ PROCEDURE InsertNewApprovalBUM(
+        in_MOCNumber IN number,
+        in_UserName IN varchar2,
+        in_ApprovalType IN varchar2,
+        in_CreatedUserName IN varchar2,
+        in_Required IN varchar2,
+        out_status OUT number);
+
+		 PROCEDURE InsertMOCApprovalSuperintendent(
+        in_MOCNumber IN number,
+        in_UserName IN varchar2,
+        in_ApprovalType IN varchar2,
+        in_CreatedUserName IN varchar2,
+        in_Required IN varchar2,
+        out_MOCNumber out number,
+        out_status OUT number);
+
+        PROCEDURE InsertDefaultApprovers(
+        in_MOCNumber IN number,
+        in_UserName IN varchar2,
+        in_ApprovalType IN varchar2,
+        in_CreatedUserName IN varchar2,
+        in_Required IN varchar2,
+        out_status OUT number);
+
+
+         PROCEDURE InsertNewApprovalDefault(
+        in_MOCNumber IN number,
+        in_UserName IN varchar2,
+        in_ApprovalType IN varchar2,
+        in_Required IN varchar2,
+        out_status OUT number);
+
+
+PROCEDURE CountApprovalFlag(
+         in_MOCNumber IN number,
+         in_ApprovalType IN varchar2,
+         out_count OUT number);
+
+ 		PROCEDURE GetTaskItemsByUsername(
+        in_UserName IN varchar2,
+        TaskItemsList OUT SYS_REFCURSOR);        
+
+ END;  
+
+ -----------------------
+ ---
+ ----------------------------------
+ ----------------------------------
+ 
+ create or replace PACKAGE BODY JEBGPI
+is
+
+    Procedure GETMOCNumber (
+         in_MOCNumber IN varchar2,
+          rsMOCList OUT SYS_REFCURSOR)
+         
+    IS
+    
+    dyn_sql varchar(4000);
+
+BEGIN
+
+    dyn_sql := 
+    'SELECT mocnumber,siteid,eventdate,status from tblmoc
+    WHERE 1=1
+    and mocnumber = ''' || in_MOCNumber || '''
+    ORDER BY MOCNUMBER';
+
+    dbms_output.put_line(dyn_sql);
+
+     OPEN rsMOCList FOR dyn_sql;
+
+END GETMOCNumber;
+
+
+Procedure     CountApprovalFlag(
+ in_MOCNumber IN number,
+ in_ApprovalType IN varchar2,
+ out_count OUT number)
+
+ IS
+
+v_count number;
+c_approval_type number;
+c_approval_flag number;
+
+ BEGIN
+
+  SELECT count(approval_type) INTO c_approval_type 
+  from tblmocapproval where 1=1 and  approval_type = in_ApprovalType and mocnumber = in_MOCNumber ;
+  DBMS_OUTPUT.PUT_LINE( c_approval_type );
+--
+    SELECT count(approval_flag) INTO c_approval_flag 
+  from tblmocapproval where 1=1 and  approval_type = in_ApprovalType and mocnumber = in_MOCNumber and approval_flag = 'Y';
+  DBMS_OUTPUT.PUT_LINE( c_approval_flag );
+
+if c_approval_type = c_approval_flag then
+out_count := 0;
+else
+out_count := 999;
+end if ;
+
+
+ --out_count := c_approval_type;
+
+ end CountApprovalFlag;
+
+
+Procedure GetRITasks
+    (in_SiteId IN varchar2,
+    in_FromYear IN varchar2,
+    in_ToYear IN varchar2,
+    in_overDue in varchar2,
+    rsRITasksList OUT SYS_REFCURSOR
+    )
+ IS
+
+ whereclause1 varchar(2000);
+ whereclause2 varchar(2000);
+ dyn_sql varchar(4000);
+ v_plantcode varchar(20);
+
+ BEGIN
+
+--whereclause2 := ' and 1=1 ';
+
+
+If in_overDue = '' then 
+   whereclause2 := ' and 1=1'   ||  in_SiteId ;
+else
+    whereclause2 := 'AND  Trim(action_due(g.duedate, g.closeddate)) = ' || in_overDue ;
+end if;
+
+
+
+dbms_output.put_line(whereclause2);
+
+INSERT INTO RCFA_AUDIT_LOG VALUES ('GetRITasks', SYSDATE, 'START') ;  
+
+dyn_sql := 'Select  g.duedate currentduedate,  
+Extract(Day from sysdate - cast(g.duedate As timestamp)) DaysPast, 
+EXTRACT(Year FROM a.EVENTDATE) Year,  
+EXTRACT(Month FROM a.EVENTDATE) Month, 
+Case TO_CHAR(EXTRACT(Month FROM a.EVENTDATE))  When ''1'' THEN ''JAN''  When ''2'' THEN ''FEB''  When ''3'' THEN ''MAR''  When ''4'' THEN ''APR''  When ''5'' THEN ''MAY''   When ''6'' THEN ''JUN''  When ''7'' THEN ''JUL''   When ''8'' THEN ''AUG''   When ''9'' THEN ''SEP''   When ''10'' THEN ''OCT''  When ''11'' THEN ''NOV''   When ''12'' THEN ''DEC''  Else ''''    End MONTHDUE,   
+Case b.inactive_flag When ''N'' THEN ''Active''   WHEN ''Y'' THEN ''InActive'' ELSE ''Unknown'' END Active,
+decode(d.sitename, ''Franco da Rocha Mill'', d.sitename, initcap(d.sitename) ) sitename,   a.RINUMBER, g.taskheaderseqid As Task, g.taskitemseqid As SubTask, 
+b.username action_username, b.email, a.SITEID, a.EVENTDATE, a.RCFA, a.RECORDABLE, Trim(action_due(g.duedate, g.closeddate)) action_due_out,   
+to_nchar(substr(g.title||g.description, 1, 200)) taskdescription, e.title, g.duedate estcompdate,  g.closeddate actcompdate,  
+decode(g.responsibleusername, null, h.roledescription, decode(b.lastname, null, null, 
+INITCAP(RTrim(b.lastname)||'', ''||rtrim(b.firstname)))) whole_name, d.inactive_flag,   a.RECORDDATE, a.USERNAME,  a.INCIDENTENDDATE, 
+a.CHRONIC, a.irisnumber,a.risuperarea,a.subarea,a.area,
+''http://gpitasktracker.graphicpkg.com/TaskDetails.aspx?HeaderNumber='' || g.taskheaderseqid || ''&'' || ''TaskNumber='' || g.taskitemseqid mytask
+
+From TBLRIINCIDENT a, refemployee b, refsite d, tblmtttaskheader e, refbustype f, tblmtttaskitem g , refroles h 
+WHERE 1 = 1 
+
+And (TO_DATE(sysdate,''yyyy-MM-dd'') <= TO_DATE(g.duedate,''yyyy-MM-dd'')) 
+       And EXTRACT(Year FROM a.incidentenddate) >= ''' || in_FromYear || ''' 
+       AND    EXTRACT(Year FROM a.incidentenddate) <= ''' || in_ToYear || '''
+
+
+AND  Trim(action_due(g.duedate, g.closeddate)) =  ''' || in_overDue || ''' 
+
+
+AND (a.originatingapplication is null or a.originatingapplication <> ''RTS'')  
+AND rtrim(g.responsibleusername) = rtrim(b.username(+)) 
+--a.rinumber = e.rinumber 
+AND a.siteid = d.siteid 
+
+
+AND a.siteid = ''' || in_SiteId || '''
+
+
+AND TRIM(action_due(g.duedate, g.closeddate)) <> ''Complete'' 
+
+AND d.bustype = f.bustype  
+AND e.taskheaderseqid = g.taskheaderseqid 
+AND g.responsibleroleseqid = h.roleseqid(+) 
+AND g.duedate is not null 
+
+AND to_char(a.rinumber) = e.externalref and e.externalsourceseqid in 
+(select externalsourceseqid from tblmttsourcesystem where upper(externalsourcename) = ''RELIABILITY INCIDENT'')
+
+order by EXTRACT(year FROM a.EVENTDATE),
+EXTRACT(month FROM a.EVENTDATE),rinumber '
+
+;
+
+INSERT INTO RCFA_AUDIT_LOG VALUES ('GetRITasks', SYSDATE, dyn_sql);
+
+dbms_output.put_line ('sqlstatement='||dyn_sql);
+
+--a.rinumber = '84463' and
+--a.RCFA = 'Yes' and
+
+ OPEN rsRITasksList FOR dyn_sql;
+
+ end GetRITasks;
+
+Procedure GetRITasksAll
+    (in_SiteId IN varchar2,
+    in_FromYear IN varchar2,
+    in_ToYear IN varchar2,
+    rsRITasksList OUT SYS_REFCURSOR
+    )
+ IS
+
+ whereclause1 varchar(2000);
+ whereclause2 varchar(2000);
+ dyn_sql varchar(4000);
+ v_plantcode varchar(20);
+
+ BEGIN
+
+
+dbms_output.put_line(whereclause2);
+
+INSERT INTO RCFA_AUDIT_LOG VALUES ('GetRITasks', SYSDATE, 'START') ;  
+
+dyn_sql := 'Select  g.duedate currentduedate,  
+Extract(Day from sysdate - cast(g.duedate As timestamp)) DaysPast, 
+EXTRACT(Year FROM a.EVENTDATE) Year,  
+EXTRACT(Month FROM a.EVENTDATE) Month, 
+Case TO_CHAR(EXTRACT(Month FROM a.EVENTDATE))  When ''1'' THEN ''JAN''  When ''2'' THEN ''FEB''  When ''3'' THEN ''MAR''  When ''4'' THEN ''APR''  When ''5'' THEN ''MAY''   When ''6'' THEN ''JUN''  When ''7'' THEN ''JUL''   When ''8'' THEN ''AUG''   When ''9'' THEN ''SEP''   When ''10'' THEN ''OCT''  When ''11'' THEN ''NOV''   When ''12'' THEN ''DEC''  Else ''''    End MONTHDUE,   
+Case b.inactive_flag When ''N'' THEN ''Active''   WHEN ''Y'' THEN ''InActive'' ELSE ''Unknown'' END Active,
+decode(d.sitename, ''Franco da Rocha Mill'', d.sitename, initcap(d.sitename) ) sitename,   a.RINUMBER, g.taskheaderseqid As Task, g.taskitemseqid As SubTask, 
+b.username action_username, b.email, a.SITEID, a.EVENTDATE, a.RCFA, a.RECORDABLE, Trim(action_due(g.duedate, g.closeddate)) action_due_out,   
+to_nchar(substr(g.title||g.description, 1, 200)) taskdescription, e.title, g.duedate estcompdate,  g.closeddate actcompdate,  
+decode(g.responsibleusername, null, h.roledescription, decode(b.lastname, null, null, 
+INITCAP(RTrim(b.lastname)||'', ''||rtrim(b.firstname)))) whole_name, d.inactive_flag,   a.RECORDDATE, a.USERNAME,  a.INCIDENTENDDATE, 
+a.CHRONIC, a.irisnumber,a.risuperarea,a.subarea,a.area,
+''http://gpitasktracker.graphicpkg.com/TaskDetails.aspx?HeaderNumber='' || g.taskheaderseqid || ''&'' || ''TaskNumber='' || g.taskitemseqid mytask
+
+From TBLRIINCIDENT a, refemployee b, refsite d, tblmtttaskheader e, refbustype f, tblmtttaskitem g , refroles h 
+WHERE 1 = 1 
+
+And (TO_DATE(sysdate,''yyyy-MM-dd'') <= TO_DATE(g.duedate,''yyyy-MM-dd'')) 
+       And EXTRACT(Year FROM a.incidentenddate) >= ''' || in_FromYear || ''' 
+       AND    EXTRACT(Year FROM a.incidentenddate) <= ''' || in_ToYear || '''
+
+
+AND (a.originatingapplication is null or a.originatingapplication <> ''RTS'')  
+AND rtrim(g.responsibleusername) = rtrim(b.username(+)) 
+--a.rinumber = e.rinumber 
+AND a.siteid = d.siteid 
+
+
+AND a.siteid = ''' || in_SiteId || '''
+
+
+AND TRIM(action_due(g.duedate, g.closeddate)) <> ''Complete'' 
+
+AND d.bustype = f.bustype  
+AND e.taskheaderseqid = g.taskheaderseqid 
+AND g.responsibleroleseqid = h.roleseqid(+) 
+AND g.duedate is not null 
+
+AND to_char(a.rinumber) = e.externalref and e.externalsourceseqid in 
+(select externalsourceseqid from tblmttsourcesystem where upper(externalsourcename) = ''RELIABILITY INCIDENT'')
+
+order by EXTRACT(year FROM a.EVENTDATE),
+EXTRACT(month FROM a.EVENTDATE),rinumber '
+
+;
+
+INSERT INTO RCFA_AUDIT_LOG VALUES ('GetRITasks', SYSDATE, dyn_sql);
+
+dbms_output.put_line ('sqlstatement='||dyn_sql);
+
+--a.rinumber = '84463' and
+--a.RCFA = 'Yes' and
+
+ OPEN rsRITasksList FOR dyn_sql;
+
+ end GetRITasksAll;
+
+
+
+
+PROCEDURE GetDefaultApproverListBUM(
+        in_SiteID IN VARCHAR2,
+        in_BusUnitArea IN varchar2,
+        in_Line IN varchar2,
+        in_Class IN varchar2,
+        in_Cat IN varchar2,
+        in_SubCat IN varchar2,
+        rsBUMList   OUT SYS_REFCURSOR)
+IS
+
+bugnum          number;
+V_ERRMSG        varchar2(1000);
+v_ClassSeq      number := null;
+v_CatSeq        number := null;
+v_SubCatSeq     number := null;
+v_BusUnit       varchar2(100);
+v_Area          varchar2(100);
+v_Line          varchar2(100);
+v_Category      varchar2(1000);
+v_SubCategory   varchar2(1000);
+v_Cat           varchar2(1000);
+v_SubCat        varchar2(1000);
+v_CatSeqAll     varchar2(1000);
+v_SubCatSeqAll  varchar2(1000);
+v_sql           varchar2(5000);
+v_BUAsql        varchar2(4000);
+v_InformedBUAsql        varchar2(4000);
+v_CatSQL        varchar2(4000);
+v_ClassSQL      varchar2(4000);
+v_excludesql    varchar2(4000);
+v_L2sql         varchar2(4000);
+v_L3sql         varchar2(4000);
+v_L4sql         varchar2(4000);
+v_Esql          varchar2(4000);
+v_Bsql          varchar2(4000);
+v_whereclause   varchar2(1000);
+
+CatCur sys_refcursor;
+SubCatCur sys_refcursor;
+
+BEGIN
+
+bugnum := 0;
+v_BusUnit := substr(in_BusUnitArea,1,instr(in_BusUnitArea,'-')-2);
+v_Area := substr(in_BusUnitArea,instr(in_BusUnitArea,'-')+2);
+v_Line := substr(in_Line,1,instr(in_Line,'-')-2);
+
+bugnum := 1;
+if in_class is not null then
+    select mocclassification_seq_id into v_classseq from refmocclassification where mocclassification = in_class;
+end if;
+
+bugnum := 2;
+if in_cat is not null then
+      --dbms_output.put_line(in_cat);
+      if instr(in_cat,',') = 0 then
+      v_cat := in_cat;
+      else
+      v_cat := substr(in_cat,1,length(in_cat)-1);
+      end if;
+      v_Category := '(''' || replace(v_cat,',',''',''') || ''')';
+      --dbms_output.put_line(v_Category);
+      OPEN CatCur for 'select mocCATEGORY_SEQ_ID from REFMOCCATEGORY
+        where MOCCATEGORY in '|| v_Category;
+      LOOP
+      FETCH CatCur into v_catseq;
+      EXIT WHEN CatCur%NOTFOUND;
+        v_CatSeqAll := v_CatSeqAll || ',' || v_CatSeq;
+      END LOOP;
+      CLOSE CatCur;
+end if;
+      v_CatSeqAll := nvl(substr(v_CatSeqAll,2),'0');
+      --dbms_output.put_line('catseqall='||v_CatSeqAll);
+
+
+bugnum := 3;
+if in_subcat is not null then
+      if instr(in_subcat,',') = 0 then
+      v_subcat := in_subcat;
+      else
+      v_subcat := substr(in_subcat,1,length(in_subcat)-1);
+      end if;
+      v_SubCategory := '(''' || replace(v_subcat,',',''',''') || ''')';
+      --dbms_output.put_line(v_SubCategory);
+      OPEN SubCatCur for 'select mocSubCATEGORY_SEQ_ID from REFMOCsubCATEGORY
+        where MOCsubCATEGORY in '|| v_SubCategory;
+      LOOP
+      FETCH SubCatCur into v_subcatseq;
+      EXIT WHEN SubCatCur%NOTFOUND;
+        v_SubCatSeqAll := v_SubCatSeqAll || ',' || v_SubCatSeq;
+      END LOOP;
+      CLOSE SubCatCur;
+END IF;
+      v_SubCatSeqAll := nvl(substr(v_SubCatSeqAll,2),'0');
+      --dbms_output.put_line('subcatseqall='||v_SubCatSeqAll);
+
+bugnum := 4;
+v_Whereclause := 'L1';
+v_BUAsql := 'select decode(required,''Y'',''*'') || username username, notifytype, nvl(email, username||''@ipaper.com'') email, fullname,
+    decode(required,''Y'',''*'') || roledescription roledescription, roleseqid, decode(required,''Y'',''*'') || roleplantcode roleplantcode from (
+    select distinct b.username, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || INITCAP(lastname) || '', '' || INITCAP(firstname) fullname,
+    ''All'' roledescription, null roleseqid, null roleplantcode
+    From tblmocnotification b, refemployee c
+    Where(b.siteid = ''' || in_Siteid || ''') and
+        (b.risuperarea= ''' || v_BusUnit || '''  or b.riSuperArea=''All'') and
+        (b.subarea= ''' || v_Area || ''' or b.SubArea=''All'') and
+        (b.area= ''' || in_line || ''' or b.Area=''All'') and
+        c.username=b.username and
+        b.Notifytype= ''L1''
+    union
+    select distinct null, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || rtrim(lastname)||'', ''||rtrim(firstname) name,
+    a.roledescription, a.roleseqid, b.roleplantcode
+    From tblmocnotification b, refroles a, refuserrolearea , refemployee c
+    Where(b.siteid = ''' || in_Siteid || ''') and
+        (b.risuperarea= ''' || v_BusUnit || '''  or b.riSuperArea=''All'') and
+        (b.subarea= ''' || v_Area || ''' or b.SubArea=''All'') and
+        (b.area= ''' || in_line || ''' or b.Area=''All'') and
+        (c.username=b.username or b.username is null) and
+        b.Notifytype=''L1'' and
+        a.roleseqid = b.roleseqid and
+        b.roleplantcode = refuserrolearea.plantcode and
+        a.roleseqid = refuserrolearea.roleseqid and
+        displayinrespdropdown = ''Y'' and
+        refuserrolearea.username = c.username ';
+
+v_ClassSQL := 'select distinct b.username, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || INITCAP(lastname) || '', '' || INITCAP(firstname) fullname ,
+    ''All'' roledescription, null roleseqid, null roleplantcode
+    From tblmocclassnotification b, refemployee c
+    Where(b.siteid = ''' || in_Siteid || ''') and
+        (b.mocclassification_seq_id =  ''' || v_classseq || ''') and
+        c.username=b.username and
+        b.Notifytype=''L1''
+    union
+    select distinct null, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || rtrim(lastname)||'', ''||rtrim(firstname) name,
+    a.roledescription, a.roleseqid, b.roleplantcode
+    From tblmocclassnotification b, refroles a, refuserrolearea , refemployee c
+    where b.siteid = ''' || in_Siteid || ''' and notifytype = ''L1''
+    and  (b.mocclassification_seq_id = ''' || v_classseq || ''')
+    and a.roleseqid = b.roleseqid
+    and b.roleplantcode = refuserrolearea.plantcode
+    and a.roleseqid = refuserrolearea.roleseqid
+          and displayinrespdropdown = ''Y''
+          and refuserrolearea.username = c.username ';
+
+v_CatSQL := 'select distinct b.username, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || INITCAP(lastname) || '', '' || INITCAP(firstname) fullname ,
+    ''All'' roledescription, null roleseqid, null roleplantcode
+    From tblmoccategorynotification b, refemployee c
+    Where(b.siteid = ''' || in_Siteid || ''') and
+        (b.moccategory_seq_id in (' || v_CatSeqAll || ') and
+        b.mocsubcategory_seq_id in (' || v_SubCatSeqAll || ')) and
+        c.username=b.username and
+        b.Notifytype=''L1''
+    union
+    select distinct null, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || rtrim(lastname)||'', ''||rtrim(firstname) name,
+    a.roledescription, a.roleseqid, b.roleplantcode
+    From tblmoccategorynotification b, refroles a, refuserrolearea , refemployee c
+    where b.siteid = ''' || in_Siteid || ''' and
+        notifytype = ''L1'' and
+        (b.moccategory_seq_id in (' || v_CatSeqAll || ') and
+        b.mocsubcategory_seq_id in (' || v_SubCatSeqAll || ')) and
+        a.roleseqid = b.roleseqid and
+        b.roleplantcode = refuserrolearea.plantcode and
+        a.roleseqid = refuserrolearea.roleseqid and
+        displayinrespdropdown = ''Y'' and
+        refuserrolearea.username = c.username ) ';
+
+
+/* 'select decode(required,''Y'',''*'') || username username, notifytype, nvl(email, username||''@ipaper.com'') email, fullname,
+    decode(required,''Y'',''*'') || roledescription roledescription, roleseqid, decode(required,''Y'',''*'') || roleplantcode roleplantcode from (
+    select distinct b.username, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || INITCAP(lastname) || '', '' || INITCAP(firstname) fullname,
+    ''All'' roledescription, null roleseqid, null roleplantcode
+    From tblmocnotification b, refemployee c
+    Where(b.siteid = ''' || in_Siteid || ''') and
+        (b.risuperarea= ''' || v_BusUnit || '''  or b.riSuperArea=''All'') and
+        (b.subarea= ''' || v_Area || ''' or b.SubArea=''All'') and
+        (b.area= ''' || in_line || ''' or b.Area=''All'') and
+        c.username=b.username and
+        b.Notifytype= ''L1''
+    union
+    select distinct null, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || rtrim(lastname)||'', ''||rtrim(firstname) name,
+    a.roledescription, a.roleseqid, b.roleplantcode
+    From tblmocnotification b, refroles a, refuserrolearea , refemployee c
+    Where(b.siteid = ''' || in_Siteid || ''') and
+        (b.risuperarea= ''' || v_BusUnit || '''  or b.riSuperArea=''All'') and
+        (b.subarea= ''' || v_Area || ''' or b.SubArea=''All'') and
+        (b.area= ''' || in_line || ''' or b.Area=''All'') and
+        (c.username=b.username or b.username is null) and
+        b.Notifytype=''L1'' and
+        a.roleseqid = b.roleseqid and
+        b.roleplantcode = refuserrolearea.plantcode and
+        a.roleseqid = refuserrolearea.roleseqid and
+        displayinrespdropdown = ''Y'' and
+        refuserrolearea.username = c.username
+    UNION
+    select distinct b.username, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || INITCAP(lastname) || '', '' || INITCAP(firstname) fullname ,
+    ''All'' roledescription, null roleseqid, null roleplantcode
+    From tblmocclassnotification b, refemployee c
+    Where(b.siteid = ''' || in_Siteid || ''') and
+        (b.mocclassification_seq_id =  ''' || v_classseq || ''') and
+        c.username=b.username and
+        b.Notifytype=''L1''
+    union
+    select distinct null, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || rtrim(lastname)||'', ''||rtrim(firstname) name,
+    a.roledescription, a.roleseqid, b.roleplantcode
+    From tblmocclassnotification b, refroles a, refuserrolearea , refemployee c
+    where b.siteid = ''' || in_Siteid || ''' and notifytype = ''L1''
+    and  (b.mocclassification_seq_id = ''' || v_classseq || ''')
+    and a.roleseqid = b.roleseqid
+    and b.roleplantcode = refuserrolearea.plantcode
+    and a.roleseqid = refuserrolearea.roleseqid
+          and displayinrespdropdown = ''Y''
+          and refuserrolearea.username = c.username
+    UNION
+    select distinct b.username, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || INITCAP(lastname) || '', '' || INITCAP(firstname) fullname ,
+    ''All'' roledescription, null roleseqid, null roleplantcode
+    From tblmoccategorynotification b, refemployee c
+    Where(b.siteid = ''' || in_Siteid || ''') and
+        (b.moccategory_seq_id in (' || v_CatSeqAll || ') and
+        b.mocsubcategory_seq_id in (' || v_SubCatSeqAll || ')) and
+        c.username=b.username and
+        b.Notifytype=''L1''
+    union
+    select distinct null, required, b.notifytype, c.email,
+    decode(required,''Y'',''*'') || rtrim(lastname)||'', ''||rtrim(firstname) name,
+    a.roledescription, a.roleseqid, b.roleplantcode
+    From tblmoccategorynotification b, refroles a, refuserrolearea , refemployee c
+    where b.siteid = ''' || in_Siteid || ''' and
+        notifytype = ''L1'' and
+        (b.moccategory_seq_id in (' || v_CatSeqAll || ') and
+        b.mocsubcategory_seq_id in (' || v_SubCatSeqAll || ')) and
+        a.roleseqid = b.roleseqid and
+        b.roleplantcode = refuserrolearea.plantcode and
+        a.roleseqid = refuserrolearea.roleseqid and
+        displayinrespdropdown = ''Y'' and
+        refuserrolearea.username = c.username )
+    ';
+    --order by 7, 4) ';*/
+
+
+bugnum := 5;
+v_excludesql := '(select nvl(username,roleplantcode||roleseqid)
+    From tblmocnotification b
+    Where b.siteid = ''' || in_Siteid || ''' and
+        (b.risuperarea= ''' || v_BusUnit || '''  or b.riSuperArea=''All'') and
+        (b.subarea= ''' || v_Area || ''' or b.SubArea=''All'') and
+        (b.area= ''' || in_line || ''' or b.Area=''All'') and
+        upper(b.Notifytype) in (''L1'')
+    union
+    select nvl(username,roleplantcode||roleseqid)
+    From tblmocclassnotification b
+    Where b.siteid = ''' || in_Siteid || ''' and
+        (b.mocclassification_seq_id =  ''' || v_classseq || ''') and
+        upper(b.Notifytype) in (''L1'')
+    union
+    select nvl(username,roleplantcode||roleseqid)
+    From tblmoccategorynotification b
+    Where b.siteid = ''' || in_Siteid || ''' and
+        b.moccategory_seq_id in (' || v_CatSeqAll || ') and
+        b.mocsubcategory_seq_id in (' || v_SubCatSeqAll || ') and
+                upper(b.Notifytype) in (''L1'')
+    ) order by 7, 4 ';
+
+
+-- Business Unit cannot be None.  If Area is None then get all informed for Business Unit selected regardless of Area and Line..
+-- If Line is None then get all informed for Business Unit and Area selected regardless of Line. Also include any
+-- default that are All - All - All or Business Unit - All.
+IF v_Area = 'None' then
+    v_InformedBUAsql := 'select decode(required,''Y'',''*'') || username username, notifytype, nvl(email, username||''@ipaper.com'') email, fullname,
+        decode(required,''Y'',''*'') || roledescription roledescription, roleseqid, decode(required,''Y'',''*'') || roleplantcode roleplantcode from (
+        select distinct b.username, required, b.notifytype, c.email,
+        decode(required,''Y'',''*'') || INITCAP(lastname) || '', '' || INITCAP(firstname) fullname,
+        ''All'' roledescription, null roleseqid, null roleplantcode
+        From tblmocnotification b, refemployee c
+        Where(b.siteid = ''' || in_Siteid || ''') and
+            (b.risuperarea= ''' || v_BusUnit || '''  or b.riSuperArea=''All'') and
+            c.username=b.username and
+            b.Notifytype= ''L1''
+        union
+        select distinct null, required, b.notifytype, c.email,
+        decode(required,''Y'',''*'') || rtrim(lastname)||'', ''||rtrim(firstname) name,
+        a.roledescription, a.roleseqid, b.roleplantcode
+        From tblmocnotification b, refroles a, refuserrolearea , refemployee c
+        Where(b.siteid = ''' || in_Siteid || ''') and
+            (b.risuperarea= ''' || v_BusUnit || '''  or b.riSuperArea=''All'') and
+            (c.username=b.username or b.username is null) and
+            b.Notifytype=''L1'' and
+            a.roleseqid = b.roleseqid and
+            b.roleplantcode = refuserrolearea.plantcode and
+            a.roleseqid = refuserrolearea.roleseqid and
+            displayinrespdropdown = ''Y'' and
+            refuserrolearea.username = c.username ';
+ELSIF in_line = 'None' then
+    v_InformedBUAsql := 'select decode(required,''Y'',''*'') || username username, notifytype, nvl(email, username||''@ipaper.com'') email, fullname,
+        decode(required,''Y'',''*'') || roledescription roledescription, roleseqid, decode(required,''Y'',''*'') || roleplantcode roleplantcode from (
+        select distinct b.username, required, b.notifytype, c.email,
+        decode(required,''Y'',''*'') || INITCAP(lastname) || '', '' || INITCAP(firstname) fullname,
+        ''All'' roledescription, null roleseqid, null roleplantcode
+        From tblmocnotification b, refemployee c
+        Where(b.siteid = ''' || in_Siteid || ''') and
+            (b.risuperarea= ''' || v_BusUnit || '''  or b.riSuperArea=''All'') and
+            (b.subarea= ''' || v_Area || ''' or b.SubArea=''All'') and
+            c.username=b.username and
+            b.Notifytype= ''L1''
+        union
+        select distinct null, required, b.notifytype, c.email,
+        decode(required,''Y'',''*'') || rtrim(lastname)||'', ''||rtrim(firstname) name,
+        a.roledescription, a.roleseqid, b.roleplantcode
+        From tblmocnotification b, refroles a, refuserrolearea , refemployee c
+        Where(b.siteid = ''' || in_Siteid || ''') and
+            (b.risuperarea= ''' || v_BusUnit || '''  or b.riSuperArea=''All'') and
+            (b.subarea= ''' || v_Area || ''' or b.SubArea=''All'') and
+            (c.username=b.username or b.username is null) and
+            b.Notifytype=''L1'' and
+            a.roleseqid = b.roleseqid and
+            b.roleplantcode = refuserrolearea.plantcode and
+            a.roleseqid = refuserrolearea.roleseqid and
+            displayinrespdropdown = ''Y'' and
+            refuserrolearea.username = c.username ';
+ELSE
+    v_InformedBUAsql := 'select decode(required,''Y'',''*'') || username username, notifytype, nvl(email, username||''@ipaper.com'') email, fullname,
+        decode(required,''Y'',''*'') || roledescription roledescription, roleseqid, decode(required,''Y'',''*'') || roleplantcode roleplantcode from (
+        select distinct b.username, required, b.notifytype, c.email,
+        decode(required,''Y'',''*'') || INITCAP(lastname) || '', '' || INITCAP(firstname) fullname,
+        ''All'' roledescription, null roleseqid, null roleplantcode
+        From tblmocnotification b, refemployee c
+        Where(b.siteid = ''' || in_Siteid || ''') and
+            (b.risuperarea= ''' || v_BusUnit || '''  or b.riSuperArea=''All'') and
+            (b.subarea= ''' || v_Area || ''' or b.SubArea=''All'') and
+            (b.area= ''' || in_line || ''' or b.Area=''All'') and
+            c.username=b.username and
+            b.Notifytype= ''L1''
+        union
+        select distinct null, required, b.notifytype, c.email,
+        decode(required,''Y'',''*'') || rtrim(lastname)||'', ''||rtrim(firstname) name,
+        a.roledescription, a.roleseqid, b.roleplantcode
+        From tblmocnotification b, refroles a, refuserrolearea , refemployee c
+        Where(b.siteid = ''' || in_Siteid || ''') and
+            (b.risuperarea= ''' || v_BusUnit || '''  or b.riSuperArea=''All'') and
+            (b.subarea= ''' || v_Area || ''' or b.SubArea=''All'') and
+            (b.area= ''' || in_line || ''' or b.Area=''All'') and
+            (c.username=b.username or b.username is null) and
+            b.Notifytype=''L1'' and
+            a.roleseqid = b.roleseqid and
+            b.roleplantcode = refuserrolearea.plantcode and
+            a.roleseqid = refuserrolearea.roleseqid and
+            displayinrespdropdown = ''Y'' and
+            refuserrolearea.username = c.username ';
+END IF;
+      --dbms_output.put_line('v_InformedBUAsql='||v_InformedBUAsql);
+
+
+v_sql := v_BUAsql || ' UNION ' || v_ClassSQL || ' UNION ' || v_CatSQL;
+
+v_L2sql := replace(v_sql,'L1','L2');
+v_L3sql := replace(v_sql,'L1','L3');
+v_L4sql := replace(v_sql,'L1','L4');
+v_Esql := replace(v_InformedBUAsql || ' UNION ' || v_ClassSQL || ' UNION ' || v_CatSQL,'L1','E');
+v_Bsql := replace(v_InformedBUAsql || ' UNION ' || v_ClassSQL || ' UNION ' || v_CatSQL,'L1','B');
+
+
+--    OPEN rsinformedList FOR
+--     v_Esql || ' where  nvl(username,roleplantcode||roleseqid) not in ' || replace(v_excludesql,'L1','L1'',''L2'',''L3'',''L4'',''L5') ;
+
+--dbms_output.put_line('Informed='||v_Esql || ' where  nvl(username,roleplantcode||roleseqid) not in ' || replace(v_excludesql,'L1','L1'',''L2'',''E'));
+
+--OPEN rsL1List FOR
+--    v_sql || ' order by 7, 4 ';
+--dbms_output.put_line('L1='||v_sql );
+
+--OPEN rsL2List FOR
+--    v_L2sql || ' where  nvl(username,roleplantcode||roleseqid) not in ' || v_excludesql;
+--dbms_output.put_line('L2='||v_L2sql || ' where  nvl(username,roleplantcode||roleseqid) not in ' || v_excludesql );
+
+--OPEN rsL3List FOR
+--     v_L3sql || ' where  nvl(username,roleplantcode||roleseqid) not in ' || replace(v_excludesql,'L1','L1'',''L2');
+--dbms_output.put_line('L3='||v_L3sql || ' where  nvl(username,roleplantcode||roleseqid) not in ' || replace(v_excludesql,'L1','L1'',''L2'));
+
+--OPEN rsL4List FOR
+--     v_L4sql || ' where  nvl(username,roleplantcode||roleseqid) not in ' || replace(v_excludesql,'L1','L1'',''L2'',''L3');
+--dbms_output.put_line('L4='||v_L4sql || ' where  nvl(username,roleplantcode||roleseqid) not in ' || replace(v_excludesql,'L1','L1'',''L2'',''L3'));
+
+
+
+       OPEN rsBUMList FOR
+     v_Bsql || ' where  nvl(username,roleplantcode||roleseqid) not in ' || replace(v_excludesql,'L1','L1'',''L2'',''L3'',''L4'',''E'',''L5') ;
+--dbms_output.put_line('rsBUMList= '||v_Bsql || ' where  nvl(username,roleplantcode||roleseqid) not in ' || replace(v_excludesql,'L1','L1'',''L2'',''E'',''B'));
+dbms_output.put_line('rsBUMList= '||v_Bsql || ' where  nvl(username,roleplantcode||roleseqid) not in ' || replace(v_excludesql,'L1','L1'',''L2'',''L3'',''L4'',''E'',''L5'));
+
+
+
+EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := 'Bugnum:' || bugnum || ' SQL error:'||sqlerrm||'SQL code:'||sqlcode;
+        INSERT INTO RCFA_AUDIT_LOG VALUES ('newmoc.GetDefaultNotificationList', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+
+
+
+
+END GetDefaultApproverListBUM;
+
+
+PROCEDURE InsertNewApprovalBUM(
+        in_MOCNumber IN number,
+        in_UserName IN varchar2,
+        in_ApprovalType IN varchar2,
+        in_CreatedUserName IN varchar2,
+        in_Required IN varchar2,
+        out_status OUT number)
+IS
+
+V_ERRMSG varchar2(4000);
+
+dyn_sql varchar2(4000);
+
+curr_approved_count number;
+curr_Approver_count number;
+
+str_UserName varchar2(50);
+str_RolePlantCode varchar2(10);
+str_RoleSeqID varchar2(10);
+str_currstatus varchar2(50);
+
+--cursor check_approval_count is
+--select count(*) from tblmocapproval
+--where mocnumber = in_MOCNumber AND
+--trim(approval_type) = in_ApprovalType AND
+--(approval_flag is null or approval_flag = 'N');
+
+
+
+--cursor get_role_users is
+--select username from refuserrolearea
+--where plantcode = in_RolePlantCode AND
+--roleseqid = in_RoleSeqID;
+
+
+BEGIN
+ out_status := 0;
+ V_ERRMSG := 'in_mocnumber: '||in_mocnumber||' in_user: '||in_username||' in_ApprovalType: '||in_ApprovalType;
+ INSERT INTO RCFA_AUDIT_LOG VALUES ('BEGIN - NewMOC.InsertNewApprovalBUM', SYSDATE, SUBSTR(V_ERRMSG,1,4000) );
+ COMMIT;
+
+-- Check if the approval type is B.  Check and make sure the user has not been added.   
+
+ SELECT count(USERNAME) INTO curr_Approver_count
+from tblmocapproval
+where mocnumber = in_MOCNumber AND
+trim(approval_type) = TRIM(in_ApprovalType) AND
+username = in_UserName;
+
+
+	IF rtrim(in_ApprovalType) = 'B' THEN
+
+	-- Check if a username is not already there.  Update
+        IF curr_Approver_count = 0 THEN
+            INSERT INTO tblmocapproval (mocnumber, username, approval_type, insert_date, insert_username, required_flag)
+            VALUES (in_MOCNumber, in_UserName, in_ApprovalType, sysdate, in_createdusername, in_Required);
+            COMMIT;
+
+		ELSE
+ 			dbms_output.put_line('JEB');
+            -- UPDATE tblmocapproval
+			-- SET approval_type = in_ApprovalType
+			-- WHERE username = in_UserName AND MOCNUMBER = in_MOCNumber AND rtrim(approval_type) = in_ApprovalType;
+			-- COMMIT;
+		END IF;
+
+	END IF;
+
+
+    -- select moc_approval(in_MOCNumber) into str_currstatus from tblmoc
+    -- where mocnumber = in_MOCNumber;
+
+    -- UPDATE TBLMOC
+    -- SET UPDATEDATE = sysdate,
+    -- status = str_currstatus
+    -- WHERE MOCNUMBER = in_MOCNumber;
+    -- COMMIT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code:'||sqlcode||dyn_sql;
+        INSERT INTO  RCFA_AUDIT_LOG VALUES ('NewMOC.InsertNewApprovalBUM', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+        out_status := sqlcode;
+
+END InsertNewApprovalBUM;
+
+
+PROCEDURE InsertMOCApprovalSuperintendent(
+        in_MOCNumber IN number,
+        in_UserName IN varchar2,
+        in_ApprovalType IN varchar2,
+        in_CreatedUserName IN varchar2,
+        in_Required IN varchar2,
+        out_MOCNumber out number,
+        out_status OUT number)
+IS
+
+ selected_MOCNumber tblMOC.MOCnumber%type;
+V_ERRMSG varchar2(4000);
+
+dyn_sql varchar2(4000);
+
+curr_approved_count number;
+curr_Approver_count number;
+
+str_UserName varchar2(50);
+str_RolePlantCode varchar2(10);
+str_RoleSeqID varchar2(10);
+str_currstatus varchar2(50);
+
+
+BEGIN
+ out_status := 0;
+ out_MOCNumber := 0;
+ V_ERRMSG := 'in_mocnumber: '||in_mocnumber||' in_user: '||in_username||' in_ApprovalType: '||in_ApprovalType;
+ INSERT INTO RCFA_AUDIT_LOG VALUES ('BEGIN - NewMOC.InsertMOCApprovalSuperintendent', SYSDATE, SUBSTR(V_ERRMSG,1,4000) );
+ COMMIT;
+
+-- Check if the approval type is B.  Check and make sure the user has not been added.   
+
+ SELECT count(USERNAME) INTO curr_Approver_count
+from tblmocapproval
+where mocnumber = in_MOCNumber AND
+trim(approval_type) = TRIM(in_ApprovalType) AND
+username = in_UserName;
+
+
+	IF rtrim(in_ApprovalType) = in_ApprovalType THEN
+
+	-- Check if a username is not already there.  Update
+        IF curr_Approver_count = 0 THEN
+            INSERT INTO tblmocapproval (mocnumber, username, approval_type, insert_date, insert_username, required_flag)
+            VALUES (in_MOCNumber, in_UserName, in_ApprovalType, sysdate, in_createdusername, in_Required);
+            COMMIT;
+
+             --dyn_sql := 'select max(MOCnumber)MOCnumber from RELADMIN.tblMOC WHERE SiteID = '''||in_SiteID||'''';
+            dyn_sql :=  'select max(approval_seqid)approval_seqid from tblmocapproval WHERE 1=1';
+
+            EXECUTE IMMEDIATE dyn_sql INTO selected_MOCNumber;
+             out_MOCNumber := selected_MOCNumber;
+
+		ELSE
+ 			dbms_output.put_line('JEB');
+            -- UPDATE tblmocapproval
+			-- SET approval_type = in_ApprovalType
+			-- WHERE username = in_UserName AND MOCNUMBER = in_MOCNumber AND rtrim(approval_type) = in_ApprovalType;
+			-- COMMIT;
+		END IF;
+
+	END IF;
+
+    -- select moc_approval(in_MOCNumber) into str_currstatus from tblmoc
+    -- where mocnumber = in_MOCNumber;
+
+    -- UPDATE TBLMOC
+    -- SET UPDATEDATE = sysdate,
+    -- status = str_currstatus
+    -- WHERE MOCNUMBER = in_MOCNumber;
+    -- COMMIT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code:'||sqlcode||dyn_sql;
+        INSERT INTO  RCFA_AUDIT_LOG VALUES ('NewMOC.InsertMOCApprovalSuperintendent', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+        out_status := sqlcode;
+
+END InsertMOCApprovalSuperintendent;
+
+PROCEDURE InsertDefaultApprovers(
+        in_MOCNumber IN number,
+        in_UserName IN varchar2,
+        in_ApprovalType IN varchar2,
+        in_CreatedUserName IN varchar2,
+        in_Required IN varchar2,
+        out_status OUT number)
+IS
+
+V_ERRMSG varchar2(4000);
+
+dyn_sql varchar2(4000);
+
+curr_approved_count number;
+curr_Approver_count number;
+
+str_UserName varchar2(50);
+str_RolePlantCode varchar2(10);
+str_RoleSeqID varchar2(10);
+str_currstatus varchar2(50);
+
+BEGIN
+ out_status := 0;
+ V_ERRMSG := 'in_mocnumber: '||in_mocnumber||' in_user: '||in_username||' in_ApprovalType: '||in_ApprovalType;
+ INSERT INTO RCFA_AUDIT_LOG VALUES ('BEGIN - NewMOC.InsertDefaultApprovers', SYSDATE, SUBSTR(V_ERRMSG,1,4000) );
+ COMMIT;
+
+-- Check for the approval type and make sure the user has not been added.   
+
+ SELECT count(USERNAME) INTO curr_Approver_count
+from tblmocapproval
+where mocnumber = in_MOCNumber AND
+trim(approval_type) = TRIM(in_ApprovalType) AND
+username = in_UserName;
+
+
+	IF rtrim(in_ApprovalType) = in_ApprovalType THEN
+
+	-- Check if a username is not already there.  Update
+        IF curr_Approver_count = 0 THEN
+            INSERT INTO tblmocapproval (mocnumber, username, approval_type, insert_date, insert_username, required_flag)
+            VALUES (in_MOCNumber, in_UserName, in_ApprovalType, sysdate, in_createdusername, in_Required);
+            COMMIT;
+
+		ELSE
+ 			dbms_output.put_line('JEB');
+            -- UPDATE tblmocapproval
+			-- SET approval_type = in_ApprovalType
+			-- WHERE username = in_UserName AND MOCNUMBER = in_MOCNumber AND rtrim(approval_type) = in_ApprovalType;
+			-- COMMIT;
+		END IF;
+
+	END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code:'||sqlcode||dyn_sql;
+        INSERT INTO  RCFA_AUDIT_LOG VALUES ('NewMOC.InsertDefaultApprovers', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+        out_status := sqlcode;
+
+END InsertDefaultApprovers;
+
+
+PROCEDURE InsertNewApprovalDefault(
+        in_MOCNumber IN number,
+        in_UserName IN varchar2,
+        in_ApprovalType IN varchar2,
+        in_Required IN varchar2,
+        out_status OUT number)
+IS
+
+V_ERRMSG varchar2(4000);
+
+dyn_sql varchar2(4000);
+
+curr_approved_count number;
+curr_Approver_count number;
+
+str_UserName varchar2(50);
+str_RolePlantCode varchar2(10);
+str_RoleSeqID varchar2(10);
+str_currstatus varchar2(50);
+
+
+--cursor get_role_users is
+--select username from refuserrolearea
+--where plantcode = in_RolePlantCode
+--AND roleseqid = in_RoleSeqID;
+
+
+BEGIN
+ out_status := 0;
+
+
+SELECT count(USERNAME) INTO curr_Approver_count
+from tblmocapproval
+where mocnumber = in_MOCNumber AND
+trim(approval_type) = TRIM(in_ApprovalType) AND
+username = in_UserName;
+
+ -- Check if a username is already there.  If not inser record
+        IF curr_Approver_count = 0 THEN
+            INSERT INTO tblmocapproval (mocnumber, username, approval_type, required_flag)
+            VALUES (in_MOCNumber, in_UserName, in_ApprovalType, in_Required);
+            COMMIT;
+        END IF;
+
+
+EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code: '||sqlcode||dyn_sql;
+        INSERT INTO  RCFA_AUDIT_LOG VALUES ('NewMOC.InsertNewApprovalDefault', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+        out_status := sqlcode;
+
+END InsertNewApprovalDefault;
+
+
+PROCEDURE GetTaskItemsByUsername(
+        in_UserName IN varchar2,
+        TaskItemsList OUT SYS_REFCURSOR)
+IS
+
+V_ERRMSG varchar2(4000);
+
+dyn_sql varchar2(4000);
+
+str_UserName varchar2(50);
+str_RolePlantCode varchar2(10);
+str_RoleSeqID varchar2(10);
+str_currstatus varchar2(50);
+
+
+
+BEGIN
+
+
+OPEN TaskItemsList FOR
+select TI.RESPONSIBLEUSERNAME,TI.STATUSSEQID,TS.STATUSNAME,TI.TITLE,TI.DESCRIPTION,TI.DUEDATE,TI.CLOSEDDATE,TI.TASKITEMSEQID,TI.TASKHEADERSEQID ,
+CASE TI.PRIORITY
+                    WHEN '1' THEN 'Low'
+                    WHEN '2' THEN 'Medium'
+                    WHEN '3' THEN 'HIGH'
+                    ELSE 'ERROR'
+                    END AS PRIORITY_fullCase
+from tblmtttaskitem TI, TBLMTTSTATUS TS 
+where 1=1 
+AND TI.STATUSSEQID = TS.STATUSSEQID
+and TI.responsibleusername = in_UserName;
+
+
+
+
+EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code: '||sqlcode||dyn_sql;
+        INSERT INTO  RCFA_AUDIT_LOG VALUES ('GetTaskItemsByUsername', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+
+
+END GetTaskItemsByUsername;
+
+
+END JEBGPI;

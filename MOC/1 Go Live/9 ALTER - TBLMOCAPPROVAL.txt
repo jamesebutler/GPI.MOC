@@ -1,0 +1,6 @@
+﻿alter table tblmocapproval add ( 
+
+emaildate Timestamp
+
+);
+commit;

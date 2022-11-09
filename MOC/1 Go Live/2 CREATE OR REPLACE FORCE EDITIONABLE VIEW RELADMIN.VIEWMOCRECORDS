@@ -1,0 +1,15 @@
+﻿ CREATE OR REPLACE FORCE EDITIONABLE VIEW "RELADMIN"."VIEWMOCRECORDS" ("BUSTYPE", "DIVISION", "SITENAME", "RISUPERAREA", "SUBAREA", "AREA", "STARTDATE", "ENDDATE", "KICKOFFDATE", "IMPACT", "DESCRIPTION", "MOCTYPE", "PERSON", "MOCNUMBER", "SITEID", "TITLE", "CREATEDATE", "UPDATEDATE", "USERNAME", "SAVINGS", "MOCCATEGORY", "MOCSUBCATEGORY", "MOCCLASSIFICATION", "EQUIPMENTID", "STATUS", "WORKORDER", "OWNER", "OWNERUSERNAME") AS 
+  
+  
+  select bustype, division, sitename, risuperarea, subarea, area, eventdate, incidentenddate, kickoffdate,
+impact, description, moctype,
+initcap(c.firstname) || ' ' || initcap(c.lastname) person, a.mocnumber, a.siteid, a.incident,
+a.recorddate, a.updatedate, a.username, a.savings, moc_category(a.mocnumber) as moccategory,
+moc_subcategory(a.mocnumber) as mocsubcategory, moc_class(a.mocnumber) as mocclassification,
+equipmentid, status status, workorder, initcap(d.firstname) || ' ' || initcap(d.lastname) owner,
+a.ownerusername
+from tblmoc a, refsite b,
+refemployee c, refemployee d
+where a.siteid = b.siteid and
+a.username = c.username(+) and
+a.ownerusername = d.username(+)

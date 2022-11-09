@@ -1,0 +1,3 @@
+﻿Make sure that the emails link have a redirect on RI to point to new MOC
+
+Make sure that the correct Report PORT is used.  Look at Viewmoc.aspx

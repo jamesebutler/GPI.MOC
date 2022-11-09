@@ -1,0 +1,43 @@
+﻿/* for root items */
+             
+    div.RadMenu_Simple ul.rmRootGroup
+    {
+        background-color: blue;
+    }
+     
+     div.RadMenu_Simple .rmLink
+     {
+         color: #fff;
+     }
+      
+     /* for hover, focused, expanded items */
+     div.RadMenu_Simple .rmItem .rmLink:hover,
+     div.RadMenu_Simple .rmItem .rmFocused,
+     div.RadMenu_Simple .rmItem .rmSelected,
+     div.RadMenu_Simple .rmItem .rmExpanded {
+            background:#fff none repeat scroll 0 0;
+            border:1px solid blue;
+            color: blue;
+    }
+     
+    /*for subitems */
+
+       div.RadMenu_Simple .rmGroup
+    {
+        background: #fff;
+    }
+     
+     div.RadMenu_Simple .rmGroup .rmLink
+     {
+         color: #000;
+     }
+      
+     /* for hover, focused, expanded items */
+     div.RadMenu_Simple .rmGroup .rmItem .rmLink:hover,
+     div.RadMenu_Simple .rmGroup .rmItem .rmFocused,
+     div.RadMenu_Simple .rmGroup .rmItem .rmSelected,
+     div.RadMenu_Simple .rmGroup .rmItem .rmExpanded {
+            background:#000 none repeat scroll 0 0;
+            border:1px solid #fff;
+            color: #fff;
+    }

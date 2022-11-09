@@ -1,0 +1,84 @@
+﻿insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('TS',	'All'	,'All'	,'All',	'JAMES.BUTLER',	'S4' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('TS',	'All'	,'All'	,'All',	'RITEST1',	'S3' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('TS',	'All'	,'All'	,'All',	'RITEST3',	'S2' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('TS',	'All'	,'All'	,'All',	'RITEST2',	'S1' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+commit;
+
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('AU',	'All'	,'All'	,'All',	'JAMES.BUTLER',	'S4' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('AU',	'All'	,'All'	,'All',	'RITEST1',	'S3' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('AU',	'All'	,'All'	,'All',	'RITEST3',	'S2' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('AU',	'All'	,'All'	,'All',	'RITEST2',	'S1' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+commit;
+
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('TX',	'All'	,'All'	,'All',	'JAMES.BUTLER',	'S4' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('TX',	'All'	,'All'	,'All',	'RITEST1',	'S3' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('TX',	'All'	,'All'	,'All',	'RITEST3',	'S2' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('TX',	'All'	,'All'	,'All',	'RITEST2',	'S1' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+commit;
+
+
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('31',	'All'	,'All'	,'All',	'JAMES.BUTLER',	'S4' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('31',	'All'	,'All'	,'All',	'RITEST1',	'S3' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('31',	'All'	,'All'	,'All',	'RITEST3',	'S2' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('31',	'All'	,'All'	,'All',	'RITEST2',	'S1' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+commit;
+
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('33',	'All'	,'All'	,'All',	'JAMES.BUTLER',	'S4' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('33',	'All'	,'All'	,'All',	'RITEST1',	'S3' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('33',	'All'	,'All'	,'All',	'RITEST3',	'S2' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('33',	'All'	,'All'	,'All',	'RITEST2',	'S1' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+commit;
+
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('PS',	'All'	,'All'	,'All',	'JAMES.BUTLER',	'S4' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('PS',	'All'	,'All'	,'All',	'RITEST1',	'S3' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('PS',	'All'	,'All'	,'All',	'RITEST3',	'S2' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+insert into tblmocnotification 
+(siteid,risuperarea,subarea,area,username,notifytype,required,lastupdateusername,lastupdatedate)
+VALUES('PS',	'All'	,'All'	,'All',	'RITEST2',	'S1' , 	'Y'	,	'JAMES.BUTLER'	,'26-AUG-22');
+commit;

@@ -1,0 +1,7 @@
+﻿alter table tblmoc add ( 
+
+SuperintendentType VARCHAR2(100 BYTE),
+SuperintendentUserName VARCHAR2(100 BYTE)
+
+);
+commit;

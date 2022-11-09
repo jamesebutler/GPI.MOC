@@ -1,0 +1,35 @@
+﻿update TBLRESOURCES
+set resourcevalue = '<br><br> <p>
+	<strong>Approval Requested</strong> = There are Approvers that have not answered the MOC
+<br /><br />
+	<strong>Approved</strong> = All Approvers have approved
+<br /><br />
+	<strong>Completed</strong> = Implementation Date has passed and all task items are complete
+.  Will be set to Implementation Date if there are no Tasks.
+<br /><br />
+	<strong>Draft</strong> = Changes will be saved to MOC but no notifications will be sent
+<br /><br />
+	<strong>Implemented</strong> = 
+<br /><br />
+	<strong>On Hold</strong> = Changes will be saved to MOC but no notification will be sent
+<br /><br />
+	<strong>No Approvers</strong> = NO Approvers assigned
+<br />	<br />
+	<strong>Not Approved</strong> = Any Approver rejected the MOC
+<br /><br />
+	<strong>Remove from Hold</strong> = MOC will be saved and automatic status will be set depending on the phase of the MOC
+<br /><br />
+	<strong>Superintendent Approved</strong> = Superintendent approved MOC.	
+<br /><br />
+	<strong>Superintendent Denied</strong> = Superintendent did not approve MOC.	
+<br /><br />
+	<strong>Superintendent Requested</strong> = Waiting for Superintendent to review.
+<br />
+	</p>'
+    
+    where 1=1
+and resourcekey = 'StatusDefinition' 
+and resourcetypeid = 101 
+and localeid = 3;
+    
+    commit;

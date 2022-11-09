@@ -1,0 +1,72 @@
+Imports GPI.GlobalClass.GlobalVariables
+
+Partial Class MOCData_Maintenance
+    Inherits RIBasePage
+    Dim userProfile As RI.CurrentUserProfile = Nothing
+    Dim currentSecurity As clsMOCSecurity
+
+    Protected Sub Page_Init(ByVal sender As Object, ByVal e As System.EventArgs) Handles Me.Init
+
+        MyGlobalAuthLevel = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "AuthLevel")
+        MyGlobalAuthLevelID = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "AuthLevelID")
+        MyGlobalBusType = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "BusType")
+        MyGlobalDefaultDivision = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "DefaultDivision")
+        MyGlobalDefaultFacility = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "DefaultFacility")
+        MyGlobalDefaultLanguage = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "DefaultLanguage")
+        MyGlobalDistinguishedName = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "DistinguishedName")
+        MyGlobalDivestedLocation = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "DivestedLocation")
+        MyGlobalDomainName = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "DomainName")
+        MyGlobalEmail = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "Email")
+        MyGlobalFullName = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "FullName")
+        MyGlobalGroupName = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "GroupName")
+        MyGlobalInActiveFlag = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "InActiveFlag")
+        MyGlobalProfileTable = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "ProfileTable")
+        MyGlobalUsername = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "Username")
+
+
+        Master.ShowMOCMenu(MyGlobalAuthLevel)
+
+
+
+        Master.SetBanner(Master.RIRESOURCES.GetResourceValue("MOC Data Maintenance", True, "MOC"))
+        'Dim userProfile = RI.SharedFunctions.GetUserProfile
+        'Dim defaults As New RIUserDefaults.CurrentUserDefaults(userProfile.Username, RIUserDefaults.Applications.MOC, ConfigurationManager.ConnectionStrings.Item("connectionRCFATST").ConnectionString)
+        '_RIDataMaintenance.ConnectionString = ConfigurationManager.ConnectionStrings.Item("connectionRCFATST").ConnectionString
+        '_RIDataMaintenance.UserName = userProfile.Username
+        'If Not Page.IsPostBack Then
+        '    If defaults.DoesDefaultValueExist(RIUserDefaults.UserProfileTypes.PlantCode) Then
+        '        _RIDataMaintenance.DefaultSite = defaults.GetDefaultValue(RIUserDefaults.UserProfileTypes.PlantCode).ToString
+        '    End If
+        'End If
+        '    _RIDataMaintenance.PopulateData()
+        RI.SharedFunctions.InitializeDataMaintenance(_RIDataMaintenance, Page.IsPostBack)
+    End Sub
+
+    Protected Sub Page_Load(ByVal sender As Object, ByVal e As System.EventArgs) Handles Me.Load
+        'userProfile = RI.SharedFunctions.GetUserProfile
+        'currentSecurity = New clsMOCSecurity(userProfile.Username, userProfile.DefaultFacility)
+        'If currentSecurity.Security.IsAdmin Then
+        '    Me._hlMOCTaskTemplates.Visible = True
+        'Else
+        '    Me._hlMOCTaskTemplates.Visible = False
+        'End If
+    End Sub
+    Protected Sub _RIDataMaintenance_DataMaintenanceLoaded(sender As Object, e As EventArgs) Handles _RIDataMaintenance.DataMaintenanceLoaded
+        RI.SharedFunctions.PopulateDataMaintenance(_RIDataMaintenance, Page.IsPostBack)
+    End Sub
+
+    Private Sub MOCData_Maintenance_PreInit(sender As Object, e As EventArgs) Handles Me.PreInit
+
+        If IsNothing(Session("UserProfile")) = True Then
+
+            'go login
+        Else
+
+
+
+        End If
+        Page.Theme = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "PageTheme")
+
+
+    End Sub
+End Class

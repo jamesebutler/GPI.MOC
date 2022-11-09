@@ -1,0 +1,104 @@
+<Menu>
+	<Group>
+		<Item Text="My MOC's" AccessKey="M" Href="~/MOC/MyMOCs.aspx">
+			<Group>
+				<Item Text="New"  />
+				<Item Text="Open" />
+				<Item IsSeparator="True" />
+				<Item Text="Save" />
+				<Item Text="Save As" />
+				<Item IsSeparator="True" />
+				<Item Text="Print Preview" />
+				<Item Text="Print" />
+				<Item IsSeparator="True" />
+				<Item Text="Close" />
+			</Group>
+		</Item>
+		<Item Text="Enter MOC" AccessKey="E">
+			<Group>
+				<Item Text="Undo" />
+				<Item IsSeparator="True" />
+				<Item Text="Cut" />
+				<Item Text="Copy" />
+				<Item Text="Paste" />
+				<Item Text="Clipboard..." />
+				<Item IsSeparator="True">
+				</Item>
+			</Group>
+		</Item>
+		<Item Text="View MOC" AccessKey="V">
+			<Group>
+				<Item Text="Break..." />
+				<Item Text="Page Numbers..." />
+				<Item Text="Date and Time..." />
+				<Item Text="Field..." />
+				<Item Text="Symbol..." />
+				<Item Text="Comment" />
+				<Item IsSeparator="True" />
+				<Item Text="Picture" />
+				<Item Text="Diagram" />
+				<Item Text="Text Box" />
+				<Item Text="Hyperlink" />
+			</Group>
+		</Item>
+		<Item Text="Reporting" AccessKey="R">
+			<Group>
+				<Item Text="Font" />
+				<Item Text="Paragraph..." />
+				<Item Text="Bullets and Numbering..." />
+				<Item Text="Borders and Shading..." />
+				<Item IsSeparator="true" />
+				<Item Text="Columns" />
+				<Item Text="Tabs" />
+				<Item Text="Change Case" />
+				<Item IsSeparator="true" />
+				<Item Text="Background" />
+				<Item Text="Theme" />
+				<Item Text="Frames" />
+				<Item Text="Autoformat" />
+			</Group>
+		</Item>
+		<Item Text="Default Approvers" AccessKey="D">
+			<Group>
+				<Item Text="Normal" />
+				<Item Text="Web Layout" />
+				<Item Text="Print Layout" />
+				<Item IsSeparator="True" />
+				<Item Text="Task Pane" />
+			</Group>
+		</Item>
+		<Item Text="Cache Viewer" AccessKey="C" >
+			<Group>
+				<Item Text="Spelling And Grammar..." />
+				<Item Text="Research..." />
+				<Item Text="Language" />
+				<Item Text="Word Count..." />
+				<Item IsSeparator="True" />
+				<Item Text="Track Changes" />
+				<Item Text="Compare And Merge Documents.." />
+			</Group>
+		</Item>
+		<Item Text="Impersonate User" AccessKey="I" >
+			<Group>
+				<Item Text="Spelling And Grammar..." />
+				<Item Text="Research..." />
+				<Item Text="Language" />
+				<Item Text="Word Count..." />
+				<Item IsSeparator="True" />
+				<Item Text="Track Changes" />
+				<Item Text="Compare And Merge Documents.." />
+			</Group>
+		</Item>
+		<Item Text="Help" AccessKey="H" >
+			<Group>
+				<Item Text="Spelling And Grammar..." />
+				<Item Text="Research..." />
+				<Item Text="Language" />
+				<Item Text="Word Count..." />
+				<Item IsSeparator="True" />
+				<Item Text="Track Changes" />
+				<Item Text="Compare And Merge Documents.." />
+			</Group>
+		</Item>		
+	</Group>
+</Menu>

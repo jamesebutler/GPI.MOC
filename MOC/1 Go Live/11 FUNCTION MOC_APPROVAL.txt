@@ -1,0 +1,143 @@
+﻿create or replace FUNCTION MOC_APPROVAL
+  ( in_mocnumber in char)
+  RETURN  CHAR IS
+  moc_approval_out varCHAR2(1000);
+
+----------------------------------------------------------------
+-- MOC_APPROVAL
+--
+-- This function is used by the MOC application to determine
+-- the current status of an MOC.  Valid status options are:
+--  Approval Requested
+--  Not Approved
+--  Approved
+--  Approved and Tasks Complete
+--  No Approvers
+--
+-- IF THIS FUNCTION NEEDS TO BE CHANGED, CHECK THE NEWMOC PACKAGE
+-- TO MAKE SURE IT DOES NOT HAVE TO BE UPDATED.  IN PARTICULAR, IF
+-- THE TEXT OF THE STATUS's ARE UPDATED.
+--
+-- ALA  6/2015
+-- Changes due to addition of up to 10 levels of approvers.
+--
+-- ALA 3/2017
+-- Change to account for new status (Draft, On Hold, Implemented,
+-- Completed, Informed Only)
+------------------------------------------------------------------
+
+procedure_name      varchar2(50);
+v_errmsg            varchar2(1000);
+
+cur_approval        varchar2(100);
+cur_approver_cnt    number(4);
+cur_total_approvers number(4);
+v_taskscompdate     date;
+int_approvalcnt     number;
+v_currstatus        varchar2(50);
+v_UpperCurrStatus        varchar2(50);
+
+CURSOR find_approval_recs_cursor IS
+SELECT approval_flag, count(*), approvers
+FROM tblmocapproval a,
+    (SELECT mocnumber, count(*) approvers
+    FROM tblmocapproval
+    WHERE approval_type LIKE 'L%' group by mocnumber) b
+WHERE a.mocnumber = b.mocnumber
+    AND a.mocnumber = in_mocnumber
+    AND approval_type LIKE 'L%'
+GROUP BY approval_flag, approvers;
+
+CURSOR check_tasks_cursor IS
+SELECT a.actionitemscompdate
+FROM tblmoc a
+WHERE a.mocnumber = in_mocnumber;
+
+CURSOR check_status_cursor IS
+SELECT a.status 
+FROM tblmoc a
+WHERE a.mocnumber = in_mocnumber;
+
+
+BEGIN
+procedure_name   := 'moc_approval';
+moc_approval_out := 'Draft';
+
+OPEN check_status_cursor;
+FETCH check_status_cursor INTO v_currstatus;
+CLOSE check_status_cursor;
+
+v_UpperCurrStatus := upper(v_currstatus);
+
+IF (v_UpperCurrStatus <> 'DRAFT' AND v_UpperCurrStatus <> 'ON HOLD' AND 
+  v_UpperCurrStatus <> 'IMPLEMENTED' AND v_UpperCurrstatus <> 'COMPLETED') 
+  OR v_UpperCurrStatus is NULL OR  v_UpperCurrStatus = 'INITIATE' THEN
+  
+  SELECT COUNT(*)
+  INTO int_approvalcnt
+  FROM tblmocapproval
+  WHERE mocnumber = in_mocnumber
+  AND approval_type LIKE 'L%';
+  
+  IF int_approvalcnt > 0 THEN
+    OPEN find_approval_recs_cursor;
+    LOOP
+      FETCH find_approval_recs_cursor
+      INTO cur_approval,
+        cur_approver_cnt,
+        cur_total_approvers ;
+      IF cur_approval     = 'N' THEN
+        moc_approval_out := 'Not Approved';
+        RETURN moc_approval_out;
+        EXIT;
+      ELSE
+        IF cur_approval     = 'Y' AND cur_approver_cnt = cur_total_approvers THEN
+          moc_approval_out := 'Approved';
+          OPEN check_tasks_cursor;
+          FETCH check_tasks_cursor INTO v_taskscompdate;
+          IF v_taskscompdate IS NOT NULL OR v_taskscompdate <> '' THEN
+            --moc_approval_out := 'Approved and Tasks Complete';
+            moc_approval_out := 'Completed';
+          END IF;
+          CLOSE check_tasks_cursor;
+        ELSE
+          moc_approval_out := 'Approval Requested';
+        END IF;
+      END IF;
+      --dbms_output.put_line('mocnumber='||in_mocnumber);
+      EXIT
+    WHEN find_approval_recs_cursor%NOTFOUND OR find_approval_recs_cursor%NOTFOUND IS NULL;
+      moc_approval_out  := rtrim(moc_approval_out);
+    END LOOP;
+
+  ELSE
+    -- 8/16/2012 ALA - per Shanda Bittick.  If no approvers selected, then status = Approved.
+    --moc_approval_out := 'Approved';
+    -- 11/2/2012 ALA - per Shanda Bittick.  If no approvers selected, then status = No Approvers
+    -- 4/11/2017 ALA - If No Approvers BUT informed, then status = Informed Only
+    -- 7/26/2022 JEB - Check to see if the status is at Supterintendent Requested and approval_flag is null 
+  SELECT COUNT(*)
+    INTO int_approvalcnt
+    FROM tblmocapproval
+    WHERE mocnumber = in_mocnumber
+      AND approval_type LIKE 'S%'
+       and approval_flag is null;
+    IF int_approvalcnt > 0 THEN
+      moc_approval_out := 'Superintendent Requested';
+    ELSE
+      moc_approval_out := 'No Approvers';
+    END IF;
+  
+  END IF;
+  
+  moc_approval_out := rtrim(moc_approval_out);
+  --dbms_output.put_line('moc_approval_out='||moc_approval_out);
+ELSE
+  moc_approval_out := v_currstatus;
+END IF;
+
+RETURN moc_approval_out;
+
+END;
+
+

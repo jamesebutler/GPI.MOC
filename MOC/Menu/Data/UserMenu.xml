@@ -1,0 +1,28 @@
+<Menu>
+	<Group>
+		<Item Text="My MOC's" AccessKey="M" Href="~/MOC/MyMOCs.aspx">
+		</Item>
+
+		<Item Text="Enter MOC" AccessKey="T" Href="~/MOC/StartMOC.aspx">
+		</Item>
+
+		<Item Text="View MOC" AccessKey="V" Href="~/MOC/ViewMOC.aspx">
+		</Item>
+
+		<Item Text="Reporting" AccessKey="R" Href="~/MOC/Reporting.aspx">
+		</Item>
+
+		<Item Text="Cache Viewer" AccessKey="C"  Href="~/Admin/CacheViewer.aspx">
+		</Item>	
+			
+		<Item Text="My Defaults"   Href="~/MOC/mydefaults.aspx">		
+		</Item>
+		
+		<Item Text="RI System" AccessKey="S"  Href="http://gpiazmeswebp01:5454/ri/ViewUpdateSearch.aspx" target="_blank">
+		</Item>
+
+		<Item Text="Help" AccessKey="H"  Href="~/Help/Default.aspx">
+			<Item Text="MILL Administrators" Href="~/MOC/MillAdministrators.aspx" />
+		</Item>		
+	</Group>
+</Menu>

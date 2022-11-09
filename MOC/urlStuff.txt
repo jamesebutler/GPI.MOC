@@ -1,0 +1,24 @@
+>? HttpContext.Current.Request.Url
+{http://localhost:5565/MOC/StartMOC.aspx}
+    AbsolutePath: "/MOC/StartMOC.aspx"
+    AbsoluteUri: "http://localhost:5565/MOC/StartMOC.aspx"
+    Authority: "localhost:5565"
+    DnsSafeHost: "localhost"
+    Fragment: ""
+    Host: "localhost"
+    HostNameType: Dns {2}
+    IdnHost: "localhost"
+    IsAbsoluteUri: True
+    IsDefaultPort: False
+    IsFile: False
+    IsLoopback: True
+    IsUnc: False
+    LocalPath: "/MOC/StartMOC.aspx"
+    OriginalString: "http://localhost:5565/MOC/StartMOC.aspx"
+    PathAndQuery: "/MOC/StartMOC.aspx"
+    Port: 5565
+    Query: ""
+    Scheme: "http"
+    Segments: {Length=3}
+    UserEscaped: False
+    UserInfo: ""

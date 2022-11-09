@@ -1,0 +1,42 @@
+﻿
+@media \0screen\,screen\9 {
+    #example  {
+        border: 1px solid #ccc;
+    }
+} 
+ 
+
+ 
+/** Customize the menu */
+.RadMenu  {
+         text-transform: uppercase;
+        font-family:'Verdana', 'Gill Sans', Helvetica, 'Times New Roman', sans-serif;
+        font-size:18px;
+      
+}
+ 
+
+         
+ /* Access menu items links. Style their appearance on hover  */
+html .RadMenu .rmRootGroup .rmRootLink:hover {
+    background-color: #ccff99;
+    color: Black;
+    background-image: none;
+}
+
+
+  
+ 
+/* Access menu root group. Style its background */
+html .RadMenu .rmRootGroup {
+    background-image: linear-gradient(bottom, #66cc00 0%, #99cc33  100%);
+    background-image: -o-linear-gradient(bottom, #66cc00 0%, #99cc33 100%);
+    background-image: -moz-linear-gradient(bottom, #66cc00 0%, #99cc33 100%);
+    background-image: -webkit-linear-gradient(bottom, #66cc00 0%, #99cc33 100%);
+    background-image: -webkit-gradient(linear,left bottom,left top,color-stop(0, #66cc00),color-stop(1, #99cc33));
+}
+ 
+
+
+
+ 

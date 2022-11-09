@@ -1,0 +1,25 @@
+﻿AuthLevel
+AuthLevelID
+BusType
+DefaultDivision
+DefaultFacility
+DefaultLanguage
+DistinguishedName
+DivestedLocation
+DomainName
+Email
+FullName
+GroupName
+InActiveFlag
+ProfileTable
+Username
+
+
+
+
+            If IsNothing(Session("UserProfile")) = True Then
+                ' the session has expired
+                Throw New Exception("Your session has expired.")
+            Else
+                somevariable = GPI.XML.XMLUtility.ReadXmlNode(Session("UserProfile").ToString, "Username")
+            End If

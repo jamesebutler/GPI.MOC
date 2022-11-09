@@ -1,0 +1,21 @@
+﻿CHANGE XX to the ID # after insert into refmoccategory
+
+
+select * from tblmoccategory where mocnumber = 23036;
+
+select * from tblmocsubcategory  where mocnumber = 23036;
+
+
+select * from refmocsubcategory where moccategory_seq_id = 43 order by mocsubcategory;
+
+insert into refmoccategory (moccategory) VALUES ('COE');
+commit;
+
+select * from refmoccategory where moccategory = 'COE';
+
+insert into refmocsubcategory (mocsubcategory,moccategory_seq_id) VALUES ('Manufacturing Policy Change',43);
+insert into refmocsubcategory (mocsubcategory,moccategory_seq_id) VALUES ('COE Alert',43);
+commit;
+
+
+select * from refmocsubcategory where moccategory_seq_id = xx;

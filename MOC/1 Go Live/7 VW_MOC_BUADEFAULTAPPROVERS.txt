@@ -1,0 +1,58 @@
+﻿
+  CREATE OR REPLACE FORCE EDITIONABLE VIEW "RELADMIN"."VW_MOC_BUADEFAULTAPPROVERS" ("SITEID", "USERNAME", "NOTIFYTYPE", "REQUIRED", "ROLEDESCRIPTION", "FULLNAME", "NOTIFY_SEQID", "RISUPERAREA", "SUBAREA", "AREA", "ROLESEQID", "ROLEPLANTCODE", "EMAIL", "NOTIFYTYPENAME") AS 
+  select 
+b.siteid,
+c.username, 
+rtrim(b.notifytype) notifytype,
+b.required,
+null roledescription, 
+INITCAP(lastname) || ', ' || INITCAP(firstname) fullname, 
+b.notify_seqid,
+b.risuperarea, 
+b.subarea, 
+b.area, 
+null roleseqid, 
+null roleplantcode, 
+nvl(email, c.username||'@graphicpkg.com') email,
+CASE notifytype
+                    WHEN 'S1' THEN 'Power Superintendent'
+                    WHEN 'S2' THEN 'Pulp Superintendent'
+                    WHEN 'S3' THEN 'Paper Superintendent'
+                    WHEN 'S4' THEN 'Mill Wide Superintendent'
+                    ELSE ''
+                    END notifytypeName
+From tblmocnotification b, refemployee c
+Where c.username=b.username
+    
+UNION
+    
+Select 
+a.siteid, 
+a.username, 
+rtrim(a.notifytype)  notifytype, 
+a.required,
+null Roledescription, 
+roledescription ||' (' || rtrim(mtt_responsiblerole(a.roleseqid,a.roleplantcode)) ||')' fullname,
+A.notify_seqid,
+a.risuperarea, 
+a.subarea, 
+a.area, 
+a.roleseqid, 
+a.roleplantcode, 
+nvl(email, refemployee.username||'@graphicpkg.com') email,
+CASE notifytype
+                    WHEN 'S1' THEN 'Power Superintendent'
+                    WHEN 'S2' THEN 'Pulp Superintendent'
+                    WHEN 'S3' THEN 'Paper Superintendent'
+                    WHEN 'S4' THEN 'Mill Wide Superintendent'
+                    ELSE ''
+                    END notifytypeName
+
+from refroles, refuserrolearea , refemployee, tblmocnotification a
+where  (refemployee.inactive_flag is null or refemployee.inactive_flag <> 'Y')
+and refroles.roleseqid = refuserrolearea.roleseqid
+and refuserrolearea.username = refemployee.username
+and refuserrolearea.plantcode = a.roleplantcode
+and refuserrolearea.roleseqid = a.roleseqid;
+
+commit;

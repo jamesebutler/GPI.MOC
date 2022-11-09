@@ -1,0 +1,1019 @@
+﻿create or replace PACKAGE VIEWMOC
+  IS
+-- 
+--
+-- Purpose: Procedures used on the View/Update Excel page of MOC Application
+--
+-- MODIFICATION HISTORY
+-- Person      Date    Comments
+-- ALA          9/17/2010  Add equipmentid to excel export.
+--
+-- ALA          2/24/2014 Added demolist.
+-- 
+-- ALA          4/21/2017 Add MOCOwner and new status search
+--              criteria. Change MOCListing and MOCExcelListing
+--              to user create date (recorddate) rather than
+--              implementation date.
+-- ---------   ------  ------------------------------------------
+
+    PROCEDURE MOCListing
+   ( in_siteid IN varchar2,
+       in_Division IN varchar2,
+       in_BusinessUnit IN varchar2,
+       in_Area IN varchar2,
+       in_Line IN varchar2,
+       in_LineBreak IN varchar2,
+       in_StartDate IN varchar2,
+       in_EndDate IN varchar2,
+       in_KickOffDate IN varchar2,
+       in_Type IN varchar2,
+       in_Planner IN varchar2,
+       in_Category IN varchar2,
+       in_SubCategory IN varchar2,
+       in_Classification IN varchar2,
+       in_OrderBy IN varchar2,
+       in_Initiator IN varchar2,
+       in_Status IN varchar2,
+       in_MOCNumber IN varchar2,
+       in_MOCOwner IN varchar2,
+       in_Title IN nvarchar2,
+       in_Username IN varchar2,
+       RS OUT SYS_REFCURSOR);
+
+    PROCEDURE MOCExcelListing
+     ( in_siteid IN varchar2,
+       in_Division IN varchar2,
+       in_BusinessUnit IN varchar2,
+       in_Area IN varchar2,
+       in_Line IN varchar2,
+       in_LineBreak IN varchar2,
+       in_StartDate IN varchar2,
+       in_EndDate IN varchar2,
+	   in_KickOffDate IN varchar2,
+       in_Type IN varchar2,
+       in_Planner IN varchar2,
+       in_Category IN varchar2,
+       in_Classification IN varchar2,
+       in_OrderBy IN varchar2,
+       in_Initiator IN varchar2,
+       in_Status IN varchar2,
+       in_MOCNumber IN varchar2,
+       in_MOCOwner IN varchar2,
+       in_Title IN nvarchar2,
+       in_Username IN varchar2,
+       RS OUT SYS_REFCURSOR);
+
+
+PROCEDURE ViewDropDownDDL
+     ( in_siteid IN varchar2,
+       rsInitiator OUT SYS_REFCURSOR,
+        rsStatus OUT SYS_REFCURSOR);
+
+PROCEDURE ViewDropDownClass
+     ( rsMOCClass OUT SYS_REFCURSOR);
+
+PROCEDURE SubCategoryList
+     ( rsMOCSubCategory OUT SYS_REFCURSOR);
+
+PROCEDURE SITEList
+    ( rsSite OUT SYS_REFCURSOR);
+
+PROCEDURE CatSubCatList
+     ( rsMOCCategory OUT SYS_REFCURSOR,
+       rsMOCSubCategory OUT SYS_REFCURSOR);
+
+PROCEDURE GetMOCInitiator(
+    in_siteid IN varchar2,
+    rsMOCInitiator OUT SYS_REFCURSOR);
+
+PROCEDURE GetMOCOwner(
+    in_siteid IN varchar2,
+    rsMOCOwner OUT SYS_REFCURSOR);
+
+PROCEDURE GetMYMOCs(
+    in_username IN varchar2,
+    rsMOCs OUT SYS_REFCURSOR);
+
+PROCEDURE DemoList
+    ( rsDemoList OUT SYS_REFCURSOR);
+
+END;
+
+
+
+create or replace PACKAGE BODY VIEWMOC
+IS
+--
+-- EQUIPMENT
+--
+-- Purpose: This package body will contain all the necessary
+-- packages for the View Update/Excel page of the MOC application.
+--
+-- MODIFICATION HISTORY
+-- Person      Date    Comments
+-- ALA  11/17/11 Added code for subCategory
+--
+-- ALA  10/17/13 Add selection for MOC Number.  If MOCNumber entered
+--              all other selection criteria is ignored because MOCNUmber
+--              is a primary key.
+--
+-- ALA          4/21/2017 Add MOCOwner, title and new status search
+--              criteria. Change MOCListing and MOCExcelListing
+--              to user create date (recorddate) rather than
+--              implementation date.
+--
+-- ALA  7/28/2017 
+--        Add username parameter to MOCListing and MOCExcelListing
+--        This is for IPG Market Channel security. Trade roles 
+--        cannot see NAC, Export or Domestic MOCs. NAC roles 
+--        cannot see Trade, Export or Domestic MOCs. Export and 
+--        Domestic roles cannot see Trade or NAC MOCs. 
+--    
+-- ---------   ------  ------------------------------------------
+
+PROCEDURE MOCListing
+     ( in_siteid IN varchar2,
+       in_Division IN varchar2,
+       in_BusinessUnit IN varchar2,
+       in_Area IN varchar2,
+       in_Line IN varchar2,
+       in_LineBreak IN varchar2,
+       in_StartDate IN varchar2,
+       in_EndDate IN varchar2,
+       in_KickOffDate IN varchar2,
+       in_Type IN varchar2,
+       in_Planner IN varchar2,
+       in_Category IN varchar2,
+       in_SubCategory IN varchar2,
+       in_Classification IN varchar2,
+       in_OrderBy IN varchar2,
+       in_Initiator IN varchar2,
+       in_Status IN varchar2,
+       in_MOCNumber IN varchar2,
+       in_MOCOwner IN varchar2,
+       in_Title IN nvarchar2,
+       in_Username IN varchar2,
+       RS OUT SYS_REFCURSOR)
+
+       IS
+
+
+    sqlWhere        varchar2(4000);
+    sqlOrderBy      varchar2(1000);
+    converted_orderby varchar2(1000);
+    txt_AndOr       varchar2(5);
+    V_ERRMSG        varchar2(4000);
+    V_ERRMSG2       varchar2(4000);
+    START_NBR       NUMBER;
+    END_NBR         NUMBER;
+    FINAL_NBR       NUMBER;
+    NBR_LENGTH      NUMBER;
+    in_formatted_category   varchar2(500);
+    select_category         varchar2(500);
+    in_formatted_subcategory   varchar2(500);
+    select_subcategory         varchar2(500);
+    in_formatted_classification   varchar2(500);
+    select_classification         varchar2(500);
+    in_formatted_status   varchar2(500);
+    select_status         varchar2(500);
+    strTitle        nvarchar2(500);
+    strRole         varchar2(500);
+
+
+    CURSOR roles_cursor IS
+    SELECT rolename
+      FROM refroles a, refuserrolearea b
+      WHERE a.roleseqid = b.roleseqid and
+        b.username = in_username and
+        a.roleseqid in (select roleseqid from refroles where rolename in ('Export','Domestic','NAC','Trades'));
+          
+    BEGIN
+
+
+        sqlWhere := ' Where (1=1 ';
+
+        IF in_MOCNumber is not null then
+            sqlWhere := sqlWhere || ' And (MOCNumber = ''' || in_MOCNUmber || ''' ) ';
+
+        ELSE
+
+            If in_Division is not null and in_Division <> 'All' Then
+               If in_Division = 'Domestic Paper Mills' then
+                  sqlWhere := sqlWhere || ' And (bustype = ''PM'' and location = ''United States'')';
+               else
+                  sqlWhere := sqlWhere || ' And (DIVISION = ''' || in_Division || ''' ) ';
+               END if;
+            End If;
+
+            If in_Siteid is not null and in_siteid <> 'AL' Then
+               sqlWhere := sqlWhere || '  And (SITEID = ''' || in_siteid || '''  ) ';
+            End If;
+
+            If in_BusinessUnit is not null  Then
+                sqlWhere := sqlWhere || '  And (RISUPERAREA = ''' || in_BusinessUnit || '''  ) ';
+            End If;
+
+            If in_Area is not null Then
+                sqlWhere := sqlWhere || ' And (SUBAREA = ''' || in_Area || '''  ) ';
+            End If;
+
+            If in_Line  is not null  Then
+                sqlWhere := sqlWhere || '  And (AREA = ''' || in_Line || '''  ) ';
+            End If;
+
+            If in_LineBreak is not null Then
+                sqlWhere := sqlWhere || '  And (LINEBREAK = ''' || in_LineBreak || '''  ) ';
+            End If;
+
+            --If in_Category is not null Then
+            --    sqlWhere := sqlWhere || '  And (MOCCategory like ''%' || in_Category || '%''  ) ';
+            --End If;
+
+           If in_Category like  '%All%'  or in_Category = '' then
+               sqlWhere := sqlWhere || '  And  (MOCCategory is not null) ';
+            else
+               If in_Category is not null  Then
+                  NBR_LENGTH := instr(in_Category,',');
+                  dbms_output.put_line(substr('Value of NBR_LENGTH='||NBR_LENGTH,1,255));
+                  If NBR_LENGTH = 0 then
+                      sqlWhere := sqlWhere || ' and (rtrim(MOCCategory) like  (''%'||in_Category||'%'' )) ' ;
+                  else
+                      in_formatted_Category := rtrim(in_Category)||',';
+                      START_NBR := 1;
+                      END_NBR := INSTR(in_formatted_Category,',',1,1);
+                      FINAL_NBR := INSTR(in_formatted_Category,',',-1,1);
+                      NBR_LENGTH := END_NBR - START_NBR;
+                      sqlWhere := sqlWhere || ' And ( ';
+                      txt_AndOr := ' or ';
+                  WHILE END_NBR <> 0   LOOP
+                    select_Category := SUBSTR(in_formatted_Category, START_NBR, NBR_LENGTH);
+                    START_NBR := END_NBR + 1;
+                    END_NBR := INSTR(in_formatted_Category,',',START_NBR);
+                    NBR_LENGTH := END_NBR - START_NBR;
+                    If END_NBR <> 0 then
+                        txt_AndOr := 'or';
+                    else
+                        txt_AndOr := ')';
+                    end if;
+                    sqlWhere := sqlWhere || ' (rtrim(MOCCategory) like  (''%'||select_Category||'%'' )) ' || txt_AndOr ;
+                    END LOOP;
+                   end if;
+             end if;
+            end if;
+
+            If in_SubCategory like  '%All%'  or in_SubCategory = '' then
+               sqlWhere := sqlWhere || '  And  (MOCSubCategory is not null) ';
+            else
+               If in_SubCategory is not null  Then
+                  NBR_LENGTH := instr(in_SubCategory,',');
+                  dbms_output.put_line(substr('Value of NBR_LENGTH='||NBR_LENGTH,1,255));
+                  If NBR_LENGTH = 0 then
+                      sqlWhere := sqlWhere || ' and (rtrim(MOCSubCategory) like  (''%'||in_SubCategory||'%'' )) ' ;
+                  else
+                      in_formatted_SubCategory := rtrim(in_SubCategory)||',';
+                      START_NBR := 1;
+                      END_NBR := INSTR(in_formatted_SubCategory,',',1,1);
+                      FINAL_NBR := INSTR(in_formatted_SubCategory,',',-1,1);
+                      NBR_LENGTH := END_NBR - START_NBR;
+                      sqlWhere := sqlWhere || ' And ( ';
+                      txt_AndOr := ' or ';
+                  WHILE END_NBR <> 0   LOOP
+                    select_SubCategory := SUBSTR(in_formatted_SubCategory, START_NBR, NBR_LENGTH);
+                    START_NBR := END_NBR + 1;
+                    END_NBR := INSTR(in_formatted_SubCategory,',',START_NBR);
+                    NBR_LENGTH := END_NBR - START_NBR;
+                    If END_NBR <> 0 then
+                        txt_AndOr := 'or';
+                    else
+                        txt_AndOr := ')';
+                    end if;
+                    sqlWhere := sqlWhere || ' (rtrim(MOCSubCategory) like  (''%'||select_SubCategory||'%'' )) ' || txt_AndOr ;
+                    END LOOP;
+                   end if;
+             end if;
+            end if;
+            dbms_output.put_line(substr('Value of sqlWhere='||sqlWhere,1,255));
+
+
+           If in_Classification like  '%All%'  or in_Classification = '' then
+               sqlWhere := sqlWhere || '  And  (MOCClassification is not null) ';
+            else
+               If in_Classification is not null  Then
+                  NBR_LENGTH := instr(in_Classification,',');
+                  dbms_output.put_line(substr('Value of NBR_LENGTH='||NBR_LENGTH,1,255));
+                  If NBR_LENGTH = 0 then
+                      sqlWhere := sqlWhere || ' and (rtrim(MOCClassification) like  (''%'||in_Classification||'%'' )) ' ;
+                  else
+                      in_formatted_Classification := rtrim(in_Classification)||',';
+                      START_NBR := 1;
+                      END_NBR := INSTR(in_formatted_Classification,',',1,1);
+                      FINAL_NBR := INSTR(in_formatted_Classification,',',-1,1);
+                      NBR_LENGTH := END_NBR - START_NBR;
+                      sqlWhere := sqlWhere || ' And ( ';
+                      txt_AndOr := ' or ';
+                  WHILE END_NBR <> 0   LOOP
+                    select_Classification := SUBSTR(in_formatted_Classification, START_NBR, NBR_LENGTH);
+                    START_NBR := END_NBR + 1;
+                    END_NBR := INSTR(in_formatted_Classification,',',START_NBR);
+                    NBR_LENGTH := END_NBR - START_NBR;
+                    If END_NBR <> 0 then
+                        txt_AndOr := 'or';
+                    else
+                        txt_AndOr := ')';
+                    end if;
+                    sqlWhere := sqlWhere || ' (rtrim(MOCClassification) like  (''%'||select_Classification||'%'' )) ' || txt_AndOr ;
+                    END LOOP;
+                   end if;
+             end if;
+            end if;
+            
+            
+
+            If in_StartDate is not null and in_EndDate is not null Then
+                If instr(in_startDate, 'AM')> 0 or instr(in_StartDate,'PM') > 0 then
+               sqlWhere := sqlWhere || '  And (trunc(createDATE) >= TO_DATE(''' || (in_StartDate) || ''',''MM/DD/YYYY HH:MI:SS AM'' ) AND trunc(createDATE) <= TO_DATE(''' || (in_EndDate) || ''',''MM/DD/YYYY HH:MI:SS AM'' )) ';
+                else
+               sqlWhere := sqlWhere || '  And (trunc(createDATE) >= TO_DATE(''' || (in_StartDate) || ''',''MM/DD/YYYY'' ) AND trunc(createDATE) <= TO_DATE(''' || (in_EndDate) || ''',''MM/DD/YYYY'' )) ';
+                end if;
+            End If;
+            
+            If in_KickOffDate is not null Then
+              sqlWhere := sqlWhere || '  And (trunc(kickoffdate) >= TO_DATE(''' || (in_KickOffDate) || ''',''MM/DD/YYYY'')) ';
+            End If;
+
+             txt_AndOr := 'AND';
+
+            If in_Type is not null and in_Type <> 'All' Then
+                sqlWhere := sqlWhere || ' and (rtrim(moctype) in  (''' || replace(in_Type,',',''',''') || ''' )) ';
+            End If;
+
+            If in_Initiator is not null and in_Initiator <> 'All' Then
+                sqlWhere := sqlWhere || ' and (upper(username) =  ''' || upper(in_Initiator) || ''' ) ';
+            End If;
+
+            If in_MOCOwner is not null and in_MOCOwner <> 'All' Then
+                sqlWhere := sqlWhere || ' and (upper(ownerusername) =  ''' || upper(in_MOCOwner) || ''' ) ';
+            End If;
+
+            If in_Status like  '%All%'  or in_Status = '' then
+               sqlWhere := sqlWhere || '  And  (status is not null) ';
+            else
+               If in_Status is not null  Then
+                  NBR_LENGTH := instr(in_Status,',');
+                  dbms_output.put_line(substr('Value of NBR_LENGTH='||NBR_LENGTH,1,255));
+                  If NBR_LENGTH = 0 then
+                      sqlWhere := sqlWhere || ' and (rtrim(Status) like  (''%'||in_Status||'%'' )) ' ;
+                  else
+                      in_formatted_Status := rtrim(in_Status)||',';
+                      START_NBR := 1;
+                      END_NBR := INSTR(in_formatted_Status,',',1,1);
+                      FINAL_NBR := INSTR(in_formatted_Status,',',-1,1);
+                      NBR_LENGTH := END_NBR - START_NBR;
+                      sqlWhere := sqlWhere || ' And ( ';
+                      txt_AndOr := ' or ';
+                  WHILE END_NBR <> 0   LOOP
+                    select_status := SUBSTR(in_formatted_Status, START_NBR, NBR_LENGTH);
+                    START_NBR := END_NBR + 1;
+                    END_NBR := INSTR(in_formatted_Status,',',START_NBR);
+                    NBR_LENGTH := END_NBR - START_NBR;
+                    If END_NBR <> 0 then
+                        txt_AndOr := 'or';
+                    else
+                        txt_AndOr := ')';
+                    end if;
+                    sqlWhere := sqlWhere || ' (rtrim(status) =  ''' ||select_status||''' ) ' || txt_AndOr ;
+                    END LOOP;
+                   end if;
+             end if;
+            end if;
+            
+            --If in_Status is not null and in_Status <> 'All' Then
+            --    sqlWhere := sqlWhere || ' and (upper(status) =  ''' || upper(in_Status) || ''' ) ';
+            --End If;
+
+        END IF;
+       --dbms_output.put_line('SQLselect :'||sqlselect||'SQLwhere :'||sqlwhere||'SQLorderby :'||sqlorderby);
+
+       IF in_Title is not null THEN
+          strTitle := upper(in_title);
+          sqlWhere := sqlWhere || ' and (upper(title) like n''%' || strTitle || '%'' OR upper(description) like n''%' || strTitle || '%'')';
+
+          --sqlStatement := 'SELECT '|| sqlSelect ||' FROM viewmocrecords '|| sqlWhere || sqlOrderby ;
+         -- INSERT INTO RCFA_AUDIT_LOG VALUES ('viewmoc', SYSDATE, SUBSTR(sqlStatement,1,4000) );
+          COMMIT;
+        END if;
+        
+--        Trade roles can cannot see NAC, Export or Domestic MOCs. NAC roles 
+--        cannot see Trades, Export or Domestic MOCs. Export and 
+--        Domestic roles cannot see Trade or NAC MOCs. 
+        IF in_Username is not null THEN
+          open roles_cursor;
+          loop
+          FETCH roles_cursor into strRole;
+          EXIT WHEN roles_cursor%NOTFOUND;
+          
+          if strRole = 'Trades' then
+              sqlWhere := sqlWhere || ' and ((upper(moccategory) not like n''%EXPORT%'' and upper(moccategory) not like n''%DOMESTIC%'' and upper(moccategory) not like n''%NAC%'') or moccategory is null)';
+          elsif strRole = 'NAC' then
+              sqlWhere := sqlWhere || ' and ((upper(moccategory) not like n''%EXPORT%'' and upper(moccategory) not like n''%DOMESTIC%'' and upper(moccategory) not like n''%TRADES%'') or moccategory is null)';
+          elsif strRole = 'Export' or strRole = 'Domestic' then
+              sqlWhere := sqlWhere || ' and ((upper(moccategory) not like n''%NAC%'' and upper(moccategory) not like n''%TRADES%'') or moccategory is null)';
+          end if;
+          
+          end loop;
+          close roles_cursor;
+        END IF;  
+          
+        sqlWhere := sqlWhere || ' ) ';
+
+        dbms_output.put_line('sqlwhere='||length(sqlwhere)||sqlwhere);
+
+        if in_OrderBy is not null then
+           if in_OrderBy like '%ASC' then
+              sqlOrderBy := 'Order by ' || replace(in_OrderBy,',',' ASC,');
+           elsif in_OrderBy like '%DESC' then
+              sqlOrderBy := 'Order by ' || replace(in_OrderBy,',',' DESC,');
+           else
+              sqlOrderby := 'Order by '||in_OrderBy;
+           end if;
+        else
+            sqlOrderby := ' Order by sitename, startdate,  mocnumber, moctype, risuperarea, SUBAREA, area';
+        end if;
+
+        --V_ERRMSG2 := null;
+        --V_ERRMSG2 := 'SQLwhere :'||sqlwhere||'in_orderby :'||in_orderby;
+        --INSERT INTO RCFA_AUDIT_LOG VALUES ('VIEWMOC.MOCLISTING', SYSDATE, SUBSTR(V_ERRMSG2,1,1000) );
+
+       -- COMMIT;
+
+       --dbms_output.put_line('SQLselect :'||sqlselect||'SQLwhere :'||sqlwhere||'SQLorderby :'||sqlorderby);
+       
+       INSERT INTO RCFA_AUDIT_LOG VALUES ('VIEWMOC.MOCLISTING', SYSDATE, SUBSTR(sqlwhere,1,4000) );
+       COMMIT;
+       
+
+       OPEN RS FOR
+       'select
+       distinct startdate, enddate, sitename, moctype, mocnumber, impact, kickoffdate,
+       risuperarea ||''-''|| subarea || ''-'' || area as busunitarea,
+       risuperarea, subarea, area, title, person, savings, status from viewmocrecords ' || sqlWhere || sqlOrderBy;
+
+        --'SELECT DISTINCT '|| sqlSelect ||' FROM viewupdatescreen '|| sqlWhere || sqlOrderby ;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code:'||sqlcode;
+        INSERT INTO RCFA_AUDIT_LOG VALUES ('VIEWMOC.MOCLISTING', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+
+END MOCListing;
+
+
+
+PROCEDURE MOCExcelListing
+     ( in_siteid IN varchar2,
+       in_Division IN varchar2,
+       in_BusinessUnit IN varchar2,
+       in_Area IN varchar2,
+       in_Line IN varchar2,
+       in_LineBreak IN varchar2,
+       in_StartDate IN varchar2,
+       in_EndDate IN varchar2,
+	   in_KickOffDate IN varchar2,
+       in_Type IN varchar2,
+       in_Planner IN varchar2,
+       in_Category IN varchar2,
+       in_Classification IN varchar2,
+       in_OrderBy IN varchar2,
+       in_Initiator IN varchar2,
+       in_Status IN varchar2,
+       in_MOCNumber IN varchar2,
+       in_MOCOwner IN varchar2,
+       in_Title IN nvarchar2,
+       in_Username IN varchar2,
+       RS OUT SYS_REFCURSOR)
+
+       IS
+
+    sqlWhere varchar2(4000);
+    sqlOrderBy varchar2(1000);
+    converted_orderby varchar2(1000);
+    txt_AndOr varchar2(5);
+    V_ERRMSG    varchar2(4000);
+    V_ERRMSG2   varchar2(4000);
+    START_NBR               NUMBER;
+    END_NBR                 NUMBER;
+    FINAL_NBR               NUMBER;
+    NBR_LENGTH              NUMBER;
+    in_formatted_category   varchar2(500);
+    select_category         varchar2(500);
+    in_formatted_classification   varchar2(500);
+    select_classification         varchar2(500);
+    in_formatted_status   varchar2(500);
+    select_status         varchar2(500);
+    strTitle        nvarchar2(500);
+    strRole         varchar2(500);
+
+
+    CURSOR roles_cursor IS
+    SELECT rolename
+      FROM refroles a, refuserrolearea b
+      WHERE a.roleseqid = b.roleseqid and
+        b.username = in_username and
+        a.roleseqid in (select roleseqid from refroles where rolename in ('Export','Domestic','NAC','Trades'));
+ 
+    BEGIN
+
+
+        sqlWhere := ' Where (1=1 ';
+
+        IF in_MOCNumber is not null then
+            sqlWhere := sqlWhere || ' And (MOCNumber = ''' || in_MOCNUmber || ''' ) ';
+
+        ELSE
+
+            If in_Division is not null and in_Division <> 'All' Then
+               sqlWhere := sqlWhere || ' And (DIVISION = ''' || in_Division || ''' ) ';
+            End If;
+
+            If in_Siteid is not null and in_siteid <> 'AL' Then
+               sqlWhere := sqlWhere || '  And (SITEID = ''' || in_siteid || '''  ) ';
+            End If;
+
+            If in_BusinessUnit is not null  Then
+                sqlWhere := sqlWhere || '  And (RISUPERAREA = ''' || in_BusinessUnit || '''  ) ';
+            End If;
+
+            If in_Area is not null Then
+                sqlWhere := sqlWhere || ' And (SUBAREA = ''' || in_Area || '''  ) ';
+            End If;
+
+            If in_Line  is not null  Then
+                sqlWhere := sqlWhere || '  And (AREA = ''' || in_Line || '''  ) ';
+            End If;
+
+            If in_LineBreak is not null Then
+                sqlWhere := sqlWhere || '  And (LINEBREAK = ''' || in_LineBreak || '''  ) ';
+            End If;
+
+            --If in_Category is not null or in_Category = ''  Then
+            --    sqlWhere := sqlWhere || '  And (MOCCategory like ''%' || in_Category || '%''  ) ';
+            --End If;
+
+           If in_Category like  '%All%'  or in_Category = '' then
+               sqlWhere := sqlWhere || '  And  (MOCCategory is not null) ';
+            else
+               If in_Category is not null  Then
+                  NBR_LENGTH := instr(in_Category,',');
+                  dbms_output.put_line(substr('Value of NBR_LENGTH='||NBR_LENGTH,1,255));
+                  If NBR_LENGTH = 0 then
+                      sqlWhere := sqlWhere || ' and (rtrim(MOCCategory) like  (''%'||in_Category||'%'' )) ' ;
+                  else
+                      in_formatted_Category := rtrim(in_Category)||',';
+                      START_NBR := 1;
+                      END_NBR := INSTR(in_formatted_Category,',',1,1);
+                      FINAL_NBR := INSTR(in_formatted_Category,',',-1,1);
+                      NBR_LENGTH := END_NBR - START_NBR;
+                      sqlWhere := sqlWhere || ' And ( ';
+                      txt_AndOr := ' or ';
+                  WHILE END_NBR <> 0   LOOP
+                    select_Category := SUBSTR(in_formatted_Category, START_NBR, NBR_LENGTH);
+                    START_NBR := END_NBR + 1;
+                    END_NBR := INSTR(in_formatted_Category,',',START_NBR);
+                    NBR_LENGTH := END_NBR - START_NBR;
+                    If END_NBR <> 0 then
+                        txt_AndOr := 'or';
+                    else
+                        txt_AndOr := ')';
+                    end if;
+                    sqlWhere := sqlWhere || ' (rtrim(MOCCategory) like  (''%'||select_Category||'%'' )) ' || txt_AndOr ;
+                    END LOOP;
+                   end if;
+             end if;
+            end if;
+
+           If in_Classification like  '%All%'  or in_Classification = '' then
+               sqlWhere := sqlWhere || '  And  (MOCClassification is not null) ';
+            else
+               If in_Classification is not null  Then
+                  NBR_LENGTH := instr(in_Classification,',');
+                  dbms_output.put_line(substr('Value of NBR_LENGTH='||NBR_LENGTH,1,255));
+                  If NBR_LENGTH = 0 then
+                      sqlWhere := sqlWhere || ' and (rtrim(MOCClassification) like  (''%'||in_Classification||'%'' )) ' ;
+                  else
+                      in_formatted_Classification := rtrim(in_Classification)||',';
+                      START_NBR := 1;
+                      END_NBR := INSTR(in_formatted_Classification,',',1,1);
+                      FINAL_NBR := INSTR(in_formatted_Classification,',',-1,1);
+                      NBR_LENGTH := END_NBR - START_NBR;
+                      sqlWhere := sqlWhere || ' And ( ';
+                      txt_AndOr := ' or ';
+                  WHILE END_NBR <> 0   LOOP
+                    select_Classification := SUBSTR(in_formatted_Classification, START_NBR, NBR_LENGTH);
+                    START_NBR := END_NBR + 1;
+                    END_NBR := INSTR(in_formatted_Classification,',',START_NBR);
+                    NBR_LENGTH := END_NBR - START_NBR;
+                    If END_NBR <> 0 then
+                        txt_AndOr := 'or';
+                    else
+                        txt_AndOr := ')';
+                    end if;
+                    sqlWhere := sqlWhere || ' (rtrim(MOCClassification) like  (''%'||select_Classification||'%'' )) ' || txt_AndOr ;
+                   END LOOP;
+                   end if;
+             end if;
+            end if;
+
+
+            If in_StartDate is not null and in_EndDate is not null Then
+                If instr(in_startDate, 'AM')> 0 or instr(in_StartDate,'PM') > 0 then
+               sqlWhere := sqlWhere || '  And (trunc(createDATE) >= TO_DATE(''' || (in_StartDate) || ''',''MM/DD/YYYY HH:MI:SS AM'' ) AND trunc(createDATE) <= TO_DATE(''' || (in_EndDate) || ''',''MM/DD/YYYY HH:MI:SS AM'' )) ';
+                else
+               sqlWhere := sqlWhere || '  And (trunc(createDATE) >= TO_DATE(''' || (in_StartDate) || ''',''MM/DD/YYYY'' ) AND trunc(createDATE) <= TO_DATE(''' || (in_EndDate) || ''',''MM/DD/YYYY'' )) ';
+                end if;
+            End If;
+			
+			If in_KickOffDate is not null Then
+              sqlWhere := sqlWhere || '  And (trunc(kickoffdate) >= TO_DATE(''' || (in_KickOffDate) || ''',''MM/DD/YYYY'')) ';
+            End If;
+
+                  txt_AndOr := 'AND';
+
+            If in_Type is not null and in_Type <> 'All' Then
+                sqlWhere := sqlWhere || txt_AndOr || ' (rtrim(moctype) in  (''' || replace(in_type,',',''',''') || ''' )) ';
+            End If;
+
+            If in_Type is not null and in_Type <> 'All' Then
+                sqlWhere := sqlWhere || ' and (rtrim(moctype) in  (''' || replace(in_Type,',',''',''') || ''' )) ';
+            End If;
+
+            If in_Initiator is not null and in_Initiator <> 'All' Then
+                sqlWhere := sqlWhere || ' and (upper(username) =  ''' || upper(in_Initiator) || ''' ) ';
+            End If;
+
+            If in_MOCOwner is not null and in_MOCOwner <> 'All' Then
+                sqlWhere := sqlWhere || ' and (upper(ownerusername) =  ''' || upper(in_MOCOwner) || ''' ) ';
+            End If;
+
+            If in_Status like  '%All%'  or in_Status = '' then
+               sqlWhere := sqlWhere || '  And  (status is not null) ';
+            else
+               If in_Status is not null  Then
+                  NBR_LENGTH := instr(in_Status,',');
+                  dbms_output.put_line(substr('Value of NBR_LENGTH='||NBR_LENGTH,1,255));
+                  If NBR_LENGTH = 0 then
+                      sqlWhere := sqlWhere || ' and (rtrim(Status) like  (''%'||in_Status||'%'' )) ' ;
+                  else
+                      in_formatted_Status := rtrim(in_Status)||',';
+                      START_NBR := 1;
+                      END_NBR := INSTR(in_formatted_Status,',',1,1);
+                      FINAL_NBR := INSTR(in_formatted_Status,',',-1,1);
+                      NBR_LENGTH := END_NBR - START_NBR;
+                      sqlWhere := sqlWhere || ' And ( ';
+                      txt_AndOr := ' or ';
+                  WHILE END_NBR <> 0   LOOP
+                    select_status := SUBSTR(in_formatted_Status, START_NBR, NBR_LENGTH);
+                    START_NBR := END_NBR + 1;
+                    END_NBR := INSTR(in_formatted_Status,',',START_NBR);
+                    NBR_LENGTH := END_NBR - START_NBR;
+                    If END_NBR <> 0 then
+                        txt_AndOr := 'or';
+                    else
+                        txt_AndOr := ')';
+                    end if;
+                    sqlWhere := sqlWhere || ' (rtrim(status) =  ''' ||select_status||''' ) ' || txt_AndOr ;
+                    END LOOP;
+                   end if;
+             end if;
+            end if;
+            
+            --If in_Status is not null and in_Status <> 'All' Then
+            --    sqlWhere := sqlWhere || ' and (upper(status) =  ''' || upper(in_Status) || ''' ) ';
+            --End If;
+
+        END IF;
+        sqlWhere := sqlWhere || ' ) ';
+
+       -- dbms_output.put_line('sqlwhere='||length(sqlwhere)||sqlwhere);
+       IF in_Title is not null THEN
+          strTitle := upper(in_title);
+          sqlWhere := sqlWhere || ' and (upper(title) like n''%' || strTitle || '%'' OR upper(description) like n''%' || strTitle || '%'')';
+
+          --sqlStatement := 'SELECT '|| sqlSelect ||' FROM viewmocrecords '|| sqlWhere || sqlOrderby ;
+         -- INSERT INTO RCFA_AUDIT_LOG VALUES ('viewmoc', SYSDATE, SUBSTR(sqlStatement,1,4000) );
+          COMMIT;
+        END if;
+ 
+ --        Trade roles can cannot see NAC, Export or Domestic MOCs. NAC roles 
+--        cannot see Trades, Export or Domestic MOCs. Export and 
+--        Domestic roles cannot see Trade or NAC MOCs. 
+        IF in_Username is not null THEN
+          open roles_cursor;
+          loop
+          FETCH roles_cursor into strRole;
+          EXIT WHEN roles_cursor%NOTFOUND;
+          
+          if strRole = 'Trades' then
+              sqlWhere := sqlWhere || ' and ((upper(moccategory) not like n''%EXPORT%'' and upper(moccategory) not like n''%DOMESTIC%'' and upper(moccategory) not like n''%NAC%'') or moccategory is null)';
+          elsif strRole = 'NAC' then
+              sqlWhere := sqlWhere || ' and ((upper(moccategory) not like n''%EXPORT%'' and upper(moccategory) not like n''%DOMESTIC%'' and upper(moccategory) not like n''%TRADES%'') or moccategory is null)';
+          elsif strRole = 'Export' or strRole = 'Domestic' then
+              sqlWhere := sqlWhere || ' and ((upper(moccategory) not like n''%NAC%'' and upper(moccategory) not like n''%TRADES%'') or moccategory is null)';
+          end if;
+          
+          end loop;
+          close roles_cursor;
+        END IF;  
+        
+        if in_OrderBy is not null then
+           if in_OrderBy like '%ASC' or in_OrderBy like '%DESC' then
+              sqlOrderby := 'Order by '||in_OrderBy;
+           end if;
+        else
+            sqlOrderby := ' Order by sitename, startdate, enddate, mocnumber, moctype, risuperarea, SUBAREA, area';
+--            sqlOrderby := ' Order by sitename, startdate, risuperarea, area';
+        end if;
+
+       --dbms_output.put_line('SQLselect :'||sqlselect||'SQLwhere :'||sqlwhere||'SQLorderby :'||sqlorderby);
+	    INSERT INTO RCFA_AUDIT_LOG VALUES ('VIEWMOC.MOCExcelLISTING', SYSDATE, SUBSTR(sqlwhere,1,4000) );
+       COMMIT;
+
+       OPEN RS FOR
+       'select kickoffdate, startdate, enddate, sitename facility, moctype, mocnumber,
+        bustype, division, risuperarea businessunit, subarea as area,
+        area as line, title, description, impact, savings, moccategory as category, mocclassification as classification,
+        equipmentid,
+        createdate, person initiator, owner, updatedate, status, workorder 
+        from viewmocrecords' || sqlWhere || sqlOrderBy;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code:'||sqlcode;
+        INSERT INTO RCFA_AUDIT_LOG VALUES ('moc_mocexcel', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+
+END MOCExcelListing;
+
+PROCEDURE ViewDropDownDDL
+     ( in_siteid IN varchar2,
+       rsInitiator OUT SYS_REFCURSOR,
+        rsStatus OUT SYS_REFCURSOR)
+
+IS
+
+    BEGIN
+
+        OPEN rsInitiator FOR
+        select distinct a.username, initcap(firstname) || ' ' || initcap(lastname) as initiator from tblmoc a, refemployee b
+        where a.username = b.username and a.siteid = in_siteid
+        order by initcap(firstname) || ' ' || initcap(lastname);
+
+        OPEN rsStatus FOR
+        select distinct moc_approval(mocnumber) status from tblmoc
+        where moc_approval(mocnumber) is not null
+        order by 1;
+
+END ViewDropDownDDL;
+
+
+PROCEDURE SubCategoryList
+     ( rsMOCSubCategory OUT SYS_REFCURSOR)
+
+IS
+
+    BEGIN
+
+        OPEN rsMOCSubCategory FOR
+        select mocsubcategory from refmocsubcategory  order by mocsubcategory;
+
+END SubCategoryList;
+
+PROCEDURE ViewDropDownClass
+     ( rsMOCClass OUT SYS_REFCURSOR)
+
+IS
+
+    BEGIN
+
+        OPEN rsMOCClass FOR
+        SELECT mocclassification FROM refmocclassification order by mocclassification;
+
+END ViewDropDownClass;
+
+PROCEDURE SITEList(
+    rsSite OUT SYS_REFCURSOR
+)
+IS
+    V_ERRMSG varchar2(1000);
+
+    BEGIN
+        OPEN rsSite FOR
+       SELECT DISTINCT SiteId, SiteName       FROM reladmin.refsite
+        WHERE Siteid not in ('TT', 'AL')  and     inactive_flag = 'N' ORDER BY SiteName;
+
+
+    EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code:'||sqlcode;
+        INSERT INTO RCFA_AUDIT_LOG VALUES ('FacilityList', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+    END SITEList;
+
+    PROCEDURE CatSubCatList
+     ( rsMOCCategory OUT SYS_REFCURSOR,
+       rsMOCSubCategory OUT SYS_REFCURSOR)
+
+    IS
+
+    BEGIN
+        OPEN rsMOCCategory FOR
+        select moccategory, MOCCATEGORY_SEQ_ID from refmoccategory 
+        order by decode(moccategory,'Market Channel','Product Trial Market',moccategory);
+
+        OPEN rsMOCSubCategory FOR
+        select mocsubcategory, mocsubcategory_seq_id, moccategory_seq_id from refmocsubcategory 
+        order by mocsubcategory;
+
+    END CatSubCatList;
+
+PROCEDURE GetMOCInitiator(
+    in_siteid IN varchar2,
+    rsMOCInitiator OUT SYS_REFCURSOR
+)
+IS
+    V_ERRMSG varchar2(1000);
+
+    BEGIN
+
+        IF in_siteid is not null and in_siteid <> 'AL' and in_siteid <> 'AC' THEN
+           OPEN rsMOCInitiator FOR
+                Select Distinct initcap(lastname)||', '||initcap(firstname) person, tblmoc.username
+                From tblmoc, refemployee
+                where tblmoc.username = refemployee.username
+                and tblmoc.siteid = ''||in_siteid||''
+                ORDER BY initcap(lastname)||', '||initcap(firstname);
+        ELSE
+           OPEN rsMOCInitiator FOR
+                Select Distinct initcap(lastname)||', '||initcap(firstname) person, tblmoc.username
+                From tblmoc, refemployee
+                where tblmoc.username = refemployee.username
+                ORDER BY initcap(lastname)||', '||initcap(firstname);
+        END IF;
+
+    EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code:'||sqlcode;
+        INSERT INTO RCFA_AUDIT_LOG VALUES ('GetMOCInitiator', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+    END GetMOCInitiator;
+
+PROCEDURE GetMOCOwner(
+    in_siteid IN varchar2,
+    rsMOCOwner OUT SYS_REFCURSOR
+)
+IS
+    V_ERRMSG varchar2(1000);
+
+    BEGIN
+
+        IF in_siteid is not null and in_siteid <> 'AL' and in_siteid <> 'AC' THEN
+           OPEN rsMOCOwner FOR
+                Select Distinct initcap(lastname)||', '||initcap(firstname) person, tblmoc.ownerusername
+                From tblmoc, refemployee
+                where tblmoc.ownerusername = refemployee.username
+                and tblmoc.siteid = ''||in_siteid||''
+                ORDER BY initcap(lastname)||', '||initcap(firstname);
+        ELSE
+           OPEN rsMOCOwner FOR
+                Select Distinct initcap(lastname)||', '||initcap(firstname) person, tblmoc.ownerusername
+                From tblmoc, refemployee
+                where tblmoc.ownerusername = refemployee.username
+                ORDER BY initcap(lastname)||', '||initcap(firstname);
+        END IF;
+
+    EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code:'||sqlcode;
+        INSERT INTO RCFA_AUDIT_LOG VALUES ('GetMOCOwner', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+    END GetMOCOwner;
+    
+PROCEDURE GetMYMOCs(
+    in_username IN varchar2,
+    rsMOCs OUT SYS_REFCURSOR)
+
+    IS
+    V_ERRMSG varchar2(1000);
+
+    BEGIN
+
+        IF in_username is not null THEN
+         /*  OPEN rsMOCs FOR
+                select distinct a.mocnumber, eventdate, incident title, description, a.comments,
+                moc_approval(a.mocnumber) status, approval_type from vw_moc_approvals a, tblmoc b
+                where a.mocnumber = b.mocnumber and (a.username = in_username
+                 or a.roleusernames like '%' || in_username || '%')
+                 and approved is null
+                ORDER BY eventdate;*/
+
+    OPEN rsMOCs FOR
+        select 'Pending Your Approval' approval_Type, a.mocnumber, a.incident title, a.description, a.eventdate, upper(c.email) email, c.username, a.siteid,
+            b.comments, b.approval_type approval_level, approval_seqid
+        from tblmoc a, tblmocapproval b, refemployee c
+        where a.mocnumber = b.mocnumber and
+            c.username = b.username and
+            b.username = in_username and
+            approval_flag is null and
+            moc_approval(a.mocnumber) = 'Approval Requested' and
+            moc_levelapproval(a.mocnumber) = 'L1 Approval Requested' and
+           decode(approval_type,'L1',1,0) > 0 and
+            a.eventdate >= '01-sep-2012'
+--        group by a.mocnumber, a.incident, a.description, a.eventdate, upper(c.email), c.username, a.siteid
+        UNION
+        select 'Pending Your Approval' approval_type,a.mocnumber, a.incident title, a.description, a.eventdate, upper(c.email) email, c.username, a.siteid,
+           b.comments, b.approval_type approval_level, approval_seqid
+        from tblmoc a, tblmocapproval b, refemployee c, refuserrolearea d
+        where a.mocnumber = b.mocnumber and
+            b.roleplantcode = d.plantcode and
+            b.roleseqid = d.roleseqid and
+            c.username = d.username and
+            d.username = in_username and
+            approval_flag is null and
+            moc_approval(a.mocnumber) = 'Approval Requested' and
+            moc_levelapproval(a.mocnumber) = 'L1 Approval Requested' and
+            decode(approval_type,'L1',1,0) > 0
+        UNION
+        select 'Pending Your Approval' approval_Type,a.mocnumber, a.incident title, a.description, a.eventdate, upper(c.email) email, c.username, a.siteid,
+            b.comments, b.approval_type, approval_seqid
+        from tblmoc a, tblmocapproval b, refemployee c
+        where a.mocnumber = b.mocnumber and
+            c.username = b.username and
+            b.username = in_username and
+            approval_flag is null and
+            moc_approval(a.mocnumber) = 'Approval Requested' and
+            moc_levelapproval(a.mocnumber) = 'L2 Approval Requested' and
+            (decode(approval_type,'L1',1,0)) = 0 and
+            (decode(approval_type,'L2',1,0)) > 0 and
+            a.eventdate >= '01-sep-2012'
+    --    group by a.mocnumber, a.incident, a.description, a.eventdate, upper(c.email), c.username, a.siteid
+        union
+        select 'Pending Your Approval' approval_Type,a.mocnumber, a.incident title, a.description, a.eventdate, upper(c.email) email, c.username, a.siteid,
+            b.comments, b.approval_type, approval_seqid
+        from tblmoc a, tblmocapproval b, refemployee c
+        where a.mocnumber = b.mocnumber and
+            c.username = b.username and
+            b.username = in_username and
+            approval_flag is null and
+            moc_approval(a.mocnumber) = 'Approval Requested' and
+            moc_levelapproval(a.mocnumber) = 'L3 Approval Requested' and
+            (decode(approval_type,'L1',1,0)) = 0 and
+            (decode(approval_type,'L2',1,0)) = 0 and
+            (decode(approval_type,'L3',1,0)) > 0 and
+            a.eventdate >= '01-sep-2012'
+   --     group by a.mocnumber, a.incident, a.description, a.eventdate, upper(c.email), c.username, a.siteid
+        UNION
+        select distinct 'Pending Your Review' approval_Type, a.mocnumber, a.incident title, a.description, a.eventdate, upper(c.email) email, c.username, a.siteid,
+            b.comments, b.approval_type, approval_seqid
+        from tblmoc a, tblmocapproval b, refemployee c
+        where a.mocnumber = b.mocnumber and
+            moc_approval(a.mocnumber) = 'Approved' and
+            b.username = c.username and
+            b.username = in_username and
+            approval_flag is null and
+            a.eventdate >= '01-sep-2012'
+        UNION
+        select 'Pending Your Review' approval_Type,a.mocnumber, a.incident title, a.description, a.eventdate, upper(c.email) email, c.username, a.siteid,
+            b.comments, b.approval_type, approval_seqid
+        from tblmoc a, tblmocapproval b, refemployee c, refuserrolearea d
+        where a.mocnumber = b.mocnumber and
+            b.roleplantcode = d.plantcode and
+            b.roleseqid = d.roleseqid and
+            c.username = d.username and
+            d.username = in_username and
+            approval_flag is null and
+            moc_approval(a.mocnumber) = 'Approved'
+        order by 1,2;
+
+        END IF;
+
+    EXCEPTION
+    WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code:'||sqlcode;
+        INSERT INTO RCFA_AUDIT_LOG VALUES ('GetMYMOCs', SYSDATE, SUBSTR(V_ERRMSG,1,1000) );
+        COMMIT;
+    END GetMYMOCs;
+
+PROCEDURE DemoList
+    (  rsDemoList OUT SYS_REFCURSOR)
+    IS
+    V_ERRMSG    varchar2(4000);
+    BEGIN
+    OPEN rsDemoList FOR select demoname, demodesc, demofilename from refhelp where application = 'MOC' order by demoname;
+    EXCEPTION
+        WHEN OTHERS THEN
+        V_ERRMSG := ' SQL error:'||sqlerrm||'SQL code:'||sqlcode;
+        INSERT INTO RCFA_AUDIT_LOG VALUES ('viewMOC.DemoList', SYSDATE, SUBSTR(V_ERRMSG,1,4000) );
+        COMMIT;
+END DemoList;
+
+END VIEWMOC;

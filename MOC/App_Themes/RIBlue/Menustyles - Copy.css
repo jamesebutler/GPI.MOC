@@ -1,0 +1,67 @@
+﻿
+@media \0screen\,screen\9 {
+    #example  {
+        border: 1px solid #ccc;
+    }
+} 
+ 
+
+ 
+    /*Main menu*/
+     /*.mainMenu {
+         background-color: red;
+        text-transform: uppercase;
+        font-family:'Verdana', 'Gill Sans', Helvetica, 'Times New Roman', sans-serif;
+        font-size:larger;
+        font-weight:600;
+       
+        
+        
+    }
+ 
+     .mainMenu .rmRootGroup .rmRootLink {
+        padding: 4px 20px;
+        line-height: 30px;
+        height: 30px;
+    }*/
+
+
+
+/** Customize the menu */
+.RadMenu  {
+         text-transform: uppercase;
+        font-family:'Verdana', 'Gill Sans', Helvetica, 'Times New Roman', sans-serif;
+        font-size:18px;
+      
+}
+
+ 
+
+         
+ /* Access menu items links. Style their appearance on hover  */
+html .RadMenu .rmRootGroup .rmRootLink:hover {
+    background-color: #53CBFB;
+    color: Black;
+    background-image: none;
+}
+
+
+     
+ 
+/* Access menu root group. Style its background */
+html .RadMenu .rmRootGroup {
+    background-image: linear-gradient(bottom, #8cd3fc 0%, #f2f9ff  100%);
+    background-image: -o-linear-gradient(bottom, #8cd3fc 0%, #f2f9ff 100%);
+    background-image: -moz-linear-gradient(bottom, #8cd3fc 0%, #f2f9ff 100%);
+    background-image: -webkit-linear-gradient(bottom, #8cd3fc 0%, #f2f9ff 100%);
+    background-image: -webkit-gradient(linear,left bottom,left top,color-stop(0, #8cd3fc),color-stop(1, #f2f9ff));
+
+}
+ 
+
+html .RadMenu .rmRootGroup .rmFocused .rmText
+/*.RadMenu_MenuDefault a.rmFocused .rmText*/
+{
+   font-weight:normal;
+}
+

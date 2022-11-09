@@ -1,0 +1,29 @@
+﻿>? userprofile
+{RI.CurrentUserProfile}
+    AuthLevel: "NO"
+    AuthLevelID: 0
+    BusType: "PM"
+    DefaultDivision: "Coated Paperboard"
+    DefaultFacility: "31"
+    DefaultLanguage: "EN-US"
+    DistinguishedName: "CN=Butler\, James,OU=Employee,OU=Users,OU=WMO1,OU=Facilities,DC=na,DC=graphicpkg,DC=pri"
+    DivestedLocation: False
+    DomainName: "NA"
+    Email: "James.Butler@Graphicpkg.Com"
+    FullName: "Butler, James"
+    GroupName: "CN=Github_GPIusers,OU=Groups,DC=na,DC=graphicpkg,DC=pri"
+    InActiveFlag: "N"
+    ProfileTable:
+"<table width=600 border=1 class='help' cellpadding=2 cellspacing=1>
+<tr><th nowrap=nowrap width=200 align=right>Full Name:</th><td align=left>Butler, James</td></tr>
+<tr><th nowrap=nowrap width=200 align=right>User Name:</th><td align=left>NA\JAMES.BUTLER</td></tr>
+<tr><th nowrap=nowrap width=200 align=right>Email Address:</th><td align=left>James.Butler@Graphicpkg.Com</td></tr>
+<tr><th nowrap=nowrap width=200 align=right>Default Facility:</th><td align=left>31</td></tr>
+<tr><th nowrap=nowrap width=200 align=right>Default Division:</th><td align=left>Coated Paperboard</td></tr>
+<tr><th nowrap=nowrap width=200 align=right>Business Type:</th><td align=left>PM</td></tr>
+<tr><th nowrap=nowrap width=200 align=right>Inactive Flag:</th><td align=left>N</td></tr>
+<tr><th nowrap=nowrap width=200 align=right>Group Name:</th><td align=left>CN=Github_GPIusers,OU=Groups,DC=na,DC=graphicpkg,DC=pri</td></tr>
+<tr><th nowrap=nowrap width=200 align=right>Divested Location:</th><td align=left>False</td></tr>
+<tr><th nowrap=nowrap width=200 align=right>Default Language:</th><td align=left>EN-US</td></tr>
+</table>"
+    Username: "JAMES.BUTLER"

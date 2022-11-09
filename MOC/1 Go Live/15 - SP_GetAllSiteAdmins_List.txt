@@ -1,0 +1,23 @@
+﻿THIS SHOULD ALREADY BY THERE - BUT CHECK
+
+create or replace PROCEDURE SP_GetAllSiteAdmins_List( 
+in_siteID in varchar2,
+        rsAdminList out sys_refcursor)
+----------------------------------------------------------------------	 
+
+AS
+BEGIN
+Open rsAdminList for
+
+select INITCAP(a.firstname) || ' ' || a.lastname fullname,INITCAP(a.email) email
+from refemployee a,refuserrolearea u
+where 1=1
+AND a.username = u.username
+AND u.roleseqid = 61
+AND a.inactive_flag = 'N'
+AND u.PLANTCODE = A.PLANTCODE
+AND a.siteid = in_siteID
+ORDER BY FULLNAME;
+
+
+end;
